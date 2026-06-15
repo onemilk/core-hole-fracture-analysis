@@ -7,10 +7,11 @@ import os
 class ProjectManager:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self._persistent_conn: sqlite3.Connection | None = None
 
     def initialize(self):
         """Create tables if they don't exist. Idempotent."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         cursor.executescript("""
             CREATE TABLE IF NOT EXISTS categories (
@@ -82,15 +83,23 @@ class ProjectManager:
             );
         """)
         conn.commit()
-        conn.close()
 
     def get_connection(self) -> sqlite3.Connection:
-        """Return a new connection. Caller must close it."""
+        """Return a connection. For :memory: databases, reuse a persistent
+        connection so that schema and data survive across calls."""
+        if self.db_path == ":memory:":
+            if self._persistent_conn is None:
+                self._persistent_conn = sqlite3.connect(":memory:")
+                self._persistent_conn.row_factory = sqlite3.Row
+                self._persistent_conn.execute("PRAGMA foreign_keys = ON")
+            return self._persistent_conn
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
     def close(self):
-        """No-op for sqlite3 — connections are per-call."""
-        pass
+        """Close the persistent connection if one was opened (e.g. :memory:)."""
+        if self._persistent_conn is not None:
+            self._persistent_conn.close()
+            self._persistent_conn = None

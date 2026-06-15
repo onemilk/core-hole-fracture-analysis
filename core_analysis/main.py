@@ -2,12 +2,14 @@
 
 import sys
 from PySide6.QtWidgets import QApplication
+from core_analysis.ui.main_window import MainWindow
 
 
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("岩心孔洞裂缝分析教学系统")
-    # MainWindow will be integrated in Task 15
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec())
 
 
