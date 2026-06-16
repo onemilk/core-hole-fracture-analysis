@@ -64,6 +64,16 @@ class MainWindow(QMainWindow):
         process_menu = menubar.addMenu("处理")
         process_menu.addAction("自动色阶", self._auto_levels)
 
+        rotate_menu = process_menu.addMenu("旋转")
+        rotate_menu.addAction("↺ 90°左转", lambda: self._rotate_image(90))
+        rotate_menu.addAction("↻ 90°右转", lambda: self._rotate_image(-90))
+        rotate_menu.addAction("180°旋转", lambda: self._rotate_image(180))
+        rotate_menu.addAction("↔ 水平翻转", self._flip_horizontal)
+        rotate_menu.addAction("↕ 竖直翻转", self._flip_vertical)
+        rotate_menu.addSeparator()
+        rotate_menu.addAction("自动旋转校正", self._auto_rotate_image)
+        rotate_menu.addAction("自定义角度...", self._rotate_custom)
+
         analysis_menu = menubar.addMenu("分析")
         analysis_menu.addAction("孔洞分析", lambda: self._set_analysis_type("hole"))
         analysis_menu.addAction("裂缝分析", lambda: self._set_analysis_type("fracture"))
@@ -81,6 +91,10 @@ class MainWindow(QMainWindow):
         toolbar.addAction("🔍+", self._canvas.zoom_in)
         toolbar.addAction("🔍-", self._canvas.zoom_out)
         toolbar.addAction("👁️ 图层", self._toggle_overlay)
+        toolbar.addSeparator()
+        toolbar.addAction("↺ 左转", lambda: self._rotate_image(90))
+        toolbar.addAction("↻ 右转", lambda: self._rotate_image(-90))
+        toolbar.addAction("↔ 翻转", self._flip_horizontal)
 
         central = QWidget()
         central_layout = QHBoxLayout(central)
@@ -233,6 +247,39 @@ class MainWindow(QMainWindow):
             self._store.save_fracture_results(results)
         self._store.update_session_report(session_id, html)
         self._report_viewer.show_report(html)
+
+    def _rotate_image(self, angle: float):
+        if self._canvas.image_bgr is None: return
+        rotated = ImageProcessor.rotate(self._canvas.image_bgr, angle)
+        self._canvas.load_image_from_array(rotated)
+        self._canvas.rotate_regions(angle)
+
+    def _flip_horizontal(self):
+        if self._canvas.image_bgr is None: return
+        flipped = ImageProcessor.flip_horizontal(self._canvas.image_bgr)
+        self._canvas.load_image_from_array(flipped)
+
+    def _flip_vertical(self):
+        if self._canvas.image_bgr is None: return
+        flipped = ImageProcessor.flip_vertical(self._canvas.image_bgr)
+        self._canvas.load_image_from_array(flipped)
+
+    def _auto_rotate_image(self):
+        if self._canvas.image_bgr is None: return
+        angle = ImageProcessor.detect_orientation(self._canvas.image_bgr)
+        correction = angle if angle <= 90 else angle - 180
+        if abs(correction) < 2:
+            QMessageBox.information(self, "自动旋转", f"图像方向已接近水平 (偏差{correction:.1f}°)")
+            return
+        self._rotate_image(correction)
+
+    def _rotate_custom(self):
+        if self._canvas.image_bgr is None: return
+        from PySide6.QtWidgets import QInputDialog
+        angle, ok = QInputDialog.getDouble(self, "自定义旋转", "角度 (正值=逆时针):",
+                                           0, -180, 180, 1)
+        if ok:
+            self._rotate_image(angle)
 
     def _toggle_overlay(self):
         self._canvas.toggle_overlay(not self._canvas._overlay_visible)
