@@ -24,6 +24,7 @@ from core_analysis.ui.image_canvas import ImageCanvas
 from core_analysis.ui.tool_panel import ToolPanel
 from core_analysis.ui.image_library import ImageLibraryWidget
 from core_analysis.ui.report_viewer import ReportViewer
+from core_analysis.ui.knowledge_dialog import KnowledgeDialog
 
 
 class MainWindow(QMainWindow):
@@ -79,6 +80,9 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction("裂缝分析", lambda: self._set_analysis_type("fracture"))
         analysis_menu.addAction("标尺设定", self._set_scale)
         analysis_menu.addAction("生成报告", self._generate_report)
+
+        help_menu = menubar.addMenu("帮助")
+        help_menu.addAction("沉积知识库", self._open_knowledge)
 
         toolbar = self.addToolBar("主工具栏")
         toolbar.addAction("📁 打开", self._import_image)
@@ -280,6 +284,10 @@ class MainWindow(QMainWindow):
                                            0, -180, 180, 1)
         if ok:
             self._rotate_image(angle)
+
+    def _open_knowledge(self):
+        dialog = KnowledgeDialog(self)
+        dialog.exec()
 
     def _toggle_overlay(self):
         self._canvas.toggle_overlay(not self._canvas._overlay_visible)
