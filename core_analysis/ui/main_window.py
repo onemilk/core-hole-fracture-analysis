@@ -223,6 +223,14 @@ class MainWindow(QMainWindow):
             html = ReportGenerator.generate_fracture_report(summary, fractures, type_stats, info)
         session = AnalysisSession(image_id=self._current_image_id, analysis_type=self._analysis_type)
         session_id = self._store.create_session(session)
+        # Persist individual result records
+        for r in results:
+            r.image_id = self._current_image_id
+            r.session_id = session_id
+        if self._analysis_type == "hole":
+            self._store.save_hole_results(results)
+        else:
+            self._store.save_fracture_results(results)
         self._store.update_session_report(session_id, html)
         self._report_viewer.show_report(html)
 
