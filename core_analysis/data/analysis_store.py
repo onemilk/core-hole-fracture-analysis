@@ -132,3 +132,43 @@ class AnalysisStore:
             is_valid=bool(r["is_valid"]),
             notes=r["notes"] or "", created_at=r["created_at"] or ""
         ) for r in rows]
+
+    def save_grain_results(self, results: list):
+        conn = self.pm.get_connection()
+        conn.execute("DELETE FROM grain_results WHERE session_id = ?",
+                     (results[0].session_id,))
+        for r in results:
+            conn.execute(
+                """INSERT INTO grain_results
+                   (image_id, session_id, region_index, area_mm2, equivalent_d_mm,
+                    perimeter_mm, feret_long_mm, feret_short_mm, circularity,
+                    size_category, is_valid, notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (r.image_id, r.session_id, r.region_index, r.area_mm2,
+                 r.equivalent_d_mm, r.perimeter_mm, r.feret_long_mm,
+                 r.feret_short_mm, r.circularity, r.size_category,
+                 int(r.is_valid), r.notes)
+            )
+        conn.commit()
+        conn.close()
+
+    def get_grain_results(self, session_id: int) -> list:
+        conn = self.pm.get_connection()
+        rows = conn.execute(
+            "SELECT * FROM grain_results WHERE session_id = ? ORDER BY region_index",
+            (session_id,)
+        ).fetchall()
+        conn.close()
+        from core_analysis.data.models import GrainResult
+        return [GrainResult(
+            id=r["id"], image_id=r["image_id"], session_id=r["session_id"],
+            region_index=r["region_index"], area_mm2=r["area_mm2"],
+            equivalent_d_mm=r["equivalent_d_mm"],
+            perimeter_mm=r["perimeter_mm"] or 0.0,
+            feret_long_mm=r["feret_long_mm"] or 0.0,
+            feret_short_mm=r["feret_short_mm"] or 0.0,
+            circularity=r["circularity"] or 0.0,
+            size_category=r["size_category"] or "",
+            is_valid=bool(r["is_valid"]),
+            notes=r["notes"] or "", created_at=r["created_at"] or ""
+        ) for r in rows]
