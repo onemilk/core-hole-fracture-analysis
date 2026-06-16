@@ -89,3 +89,22 @@ class MaskRegion:
     area_px: float = 0.0
     centroid: tuple = (0.0, 0.0)
     bbox: tuple = (0, 0, 0, 0)  # x, y, w, h
+
+
+@dataclass
+class GrainResult:
+    """单颗粒分析结果"""
+    id: Optional[int] = None
+    image_id: Optional[int] = None
+    session_id: Optional[int] = None
+    region_index: int = 0
+    area_mm2: float = 0.0
+    equivalent_d_mm: float = 0.0
+    perimeter_mm: float = 0.0
+    feret_long_mm: float = 0.0
+    feret_short_mm: float = 0.0
+    circularity: float = 0.0
+    size_category: str = ""
+    is_valid: bool = True
+    notes: str = ""
+    created_at: str = ""

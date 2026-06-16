@@ -19,7 +19,7 @@ def db(temp_db_path):
 
 class TestProjectManager:
     def test_initialize_creates_tables(self, temp_db_path):
-        """初始化应创建6张表"""
+        """初始化应创建7张表"""
         pm = ProjectManager(temp_db_path)
         pm.initialize()
         conn = sqlite3.connect(temp_db_path)
@@ -30,6 +30,7 @@ class TestProjectManager:
         assert "images" in tables
         assert "hole_results" in tables
         assert "fracture_results" in tables
+        assert "grain_results" in tables
         assert "analysis_sessions" in tables
         conn.close()
 
@@ -40,7 +41,7 @@ class TestProjectManager:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = [row[0] for row in cursor.fetchall()]
-        assert len(tables) == 6
+        assert len(tables) == 7
         conn.close()
 
     def test_get_connection_returns_connection(self, db):

@@ -72,6 +72,23 @@ class ProjectManager:
                 created_at TEXT DEFAULT (datetime('now'))
             );
 
+            CREATE TABLE IF NOT EXISTS grain_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_id INTEGER REFERENCES images(id),
+                session_id INTEGER REFERENCES analysis_sessions(id),
+                region_index INTEGER,
+                area_mm2 REAL,
+                equivalent_d_mm REAL,
+                perimeter_mm REAL,
+                feret_long_mm REAL,
+                feret_short_mm REAL,
+                circularity REAL,
+                size_category TEXT,
+                is_valid BOOLEAN DEFAULT 1,
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS analysis_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 image_id INTEGER REFERENCES images(id),
