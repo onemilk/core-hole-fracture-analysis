@@ -57,36 +57,37 @@ class ReportGenerator:
         diameters = np.array(diameters)
         charts = {}
 
-        fig, ax = plt.subplots(figsize=(6, 4))
+        fig, ax = plt.subplots(figsize=(10, 6))
         ax.hist(diameters, bins=min(10, len(diameters)), edgecolor='black', alpha=0.7)
-        ax.set_xlabel("等效直径 (mm)")
-        ax.set_ylabel("频数")
-        ax.set_title("孔洞等效直径频率直方图")
+        ax.set_xlabel("等效直径 (mm)", fontsize=14)
+        ax.set_ylabel("频数", fontsize=14)
+        ax.set_title("孔洞等效直径频率直方图", fontsize=16)
+        ax.tick_params(labelsize=11)
         charts["histogram"] = cls._fig_to_b64(fig)
         plt.close(fig)
 
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(10, 6))
         sorted_d = np.sort(diameters)
         cumulative = np.arange(1, len(sorted_d) + 1) / len(sorted_d) * 100
-        ax.plot(sorted_d, cumulative, 'b-o', markersize=4)
-        ax.set_xlabel("等效直径 (mm)", fontsize=12)
-        ax.set_ylabel("累计频率 (%)", fontsize=12)
-        ax.set_title("孔洞等效直径累计频率曲线", fontsize=14)
-        ax.tick_params(labelsize=10)
+        ax.plot(sorted_d, cumulative, 'b-o', markersize=5, linewidth=1.5)
+        ax.set_xlabel("等效直径 (mm)", fontsize=14)
+        ax.set_ylabel("累计频率 (%)", fontsize=14)
+        ax.set_title("孔洞等效直径累计频率曲线", fontsize=16)
+        ax.tick_params(labelsize=11)
         charts["cumulative"] = cls._fig_to_b64(fig)
         plt.close(fig)
 
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(10, 6))
         mu, sigma = np.mean(diameters), np.std(diameters)
         if sigma > 0:
             x = np.linspace(max(0, mu - 3 * sigma), mu + 3 * sigma, 100)
             ax.plot(x, stats.norm.cdf(x, mu, sigma) * 100, 'r-', lw=2, label=f"μ={mu:.2f}, σ={sigma:.2f}")
-            ax.scatter(sorted_d, cumulative, s=10, alpha=0.5, label="实测")
-            ax.legend(fontsize=10)
-        ax.set_xlabel("等效直径 (mm)", fontsize=12)
-        ax.set_ylabel("累计概率 (%)", fontsize=12)
-        ax.set_title("孔洞等效直径正态累计曲线", fontsize=14)
-        ax.tick_params(labelsize=10)
+            ax.scatter(sorted_d, cumulative, s=15, alpha=0.5, label="实测")
+            ax.legend(fontsize=11)
+        ax.set_xlabel("等效直径 (mm)", fontsize=14)
+        ax.set_ylabel("累计概率 (%)", fontsize=14)
+        ax.set_title("孔洞等效直径正态累计曲线", fontsize=16)
+        ax.tick_params(labelsize=11)
         charts["normal_cdf"] = cls._fig_to_b64(fig)
         plt.close(fig)
         return charts
@@ -94,7 +95,7 @@ class ReportGenerator:
     @staticmethod
     def _fig_to_b64(fig) -> str:
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        fig.savefig(buf, format='png', dpi=200, bbox_inches='tight')
         buf.seek(0)
         return base64.b64encode(buf.read()).decode()
 
