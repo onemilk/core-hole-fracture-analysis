@@ -4,5 +4,6 @@ dist/
 *.spec
 __pycache__/
 *.pyc
+*.db
 debug_mask.png
 uploads/
