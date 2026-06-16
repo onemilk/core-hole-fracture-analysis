@@ -131,7 +131,7 @@ class ImageCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def wheelEvent(self, event):
-        if event.modifiers() & Qt.ControlModifier:
+        if event.modifiers() & Qt.AltModifier:
             delta = 5 if event.angleDelta().y() > 0 else -5
             self.rotate_requested.emit(float(delta))
         elif event.angleDelta().y() > 0:
