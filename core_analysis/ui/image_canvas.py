@@ -164,6 +164,11 @@ class ImageCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def wheelEvent(self, event):
+        if event.modifiers() & Qt.ControlModifier:
+            delta = 5 if event.angleDelta().y() > 0 else -5
+            self.rotate_view(delta)
+            event.accept()
+            return
         if event.angleDelta().y() > 0:
             self.zoom_in()
         else:
