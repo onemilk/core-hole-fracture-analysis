@@ -194,6 +194,12 @@ class ImageCanvas(QGraphicsView):
     def image_bgr(self):
         return self._image_bgr
 
+    def scrollContentsBy(self, dx, dy):
+        """Block all scroll/zoom during rotation mode."""
+        if self._rotation_mode:
+            return
+        super().scrollContentsBy(dx, dy)
+
     def rotate_regions(self, angle: float):
         """Rotate all overlay regions by given angle (degrees)."""
         if not self._regions or self._image_bgr is None:
