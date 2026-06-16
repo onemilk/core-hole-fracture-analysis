@@ -165,7 +165,7 @@ class ImageCanvas(QGraphicsView):
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
-            delta = 5 if event.angleDelta().y() > 0 else -5
+            delta = 2 if event.angleDelta().y() > 0 else -2
             self.rotate_view(delta)
             event.accept()
             return
