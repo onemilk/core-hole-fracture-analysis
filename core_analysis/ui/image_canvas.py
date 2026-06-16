@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush
 from PySide6.QtCore import Qt, QRectF, Signal, QPointF
 from core_analysis.data.models import MaskRegion
+from core_analysis.engine.morphology_engine import MorphologyEngine
 
 
 class Layer:
@@ -141,6 +142,19 @@ class ImageCanvas(QGraphicsView):
     @property
     def image_bgr(self):
         return self._image_bgr
+
+    def rotate_regions(self, angle: float):
+        """Rotate all overlay regions by given angle (degrees)."""
+        if not self._regions or self._image_bgr is None:
+            return
+        h, w = self._image_bgr.shape[:2]
+        updated = []
+        for r in self._regions:
+            result = MorphologyEngine.rotate_region(r, angle, (h, w))
+            if result is not None:
+                updated.append(result)
+        self._regions = updated
+        self._refresh_overlay()
 
     @property
     def image_size(self) -> tuple:
