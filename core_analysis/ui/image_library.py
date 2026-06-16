@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QPixmap, QAction, QImage
 from PySide6.QtCore import Qt, Signal
 import cv2
+import numpy as np
 from core_analysis.data.models import Category, ImageRecord
 
 
@@ -84,7 +85,9 @@ class ImageLibraryWidget(QDockWidget):
             item = QListWidgetItem(img.filename)
             item.setData(Qt.UserRole, img.id)
             if os.path.exists(img.filepath):
-                bgr = cv2.imread(img.filepath)
+                with open(img.filepath, 'rb') as f:
+                    data = np.frombuffer(f.read(), dtype=np.uint8)
+                bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
                 if bgr is not None:
                     h, w = bgr.shape[:2]
                     scale = min(120 / w, 120 / h)

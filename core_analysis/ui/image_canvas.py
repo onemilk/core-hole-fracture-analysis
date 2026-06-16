@@ -54,7 +54,9 @@ class ImageCanvas(QGraphicsView):
     # ── Image Loading ──
 
     def load_image(self, filepath: str):
-        bgr = cv2.imread(filepath)
+        with open(filepath, 'rb') as f:
+            data = np.frombuffer(f.read(), dtype=np.uint8)
+        bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
         if bgr is None:
             raise FileNotFoundError(f"Cannot load image: {filepath}")
         self._image_bgr = bgr
