@@ -49,7 +49,6 @@ class MainWindow(QMainWindow):
         self._current_image_id = None
         self._current_image_record = None
         self._analysis_type = "hole"
-        self._current_rotation = 0.0  # accumulated rotation angle
 
         self._setup_ui()
         self._connect_signals()
@@ -67,14 +66,14 @@ class MainWindow(QMainWindow):
         process_menu.addAction("自动色阶", self._auto_levels)
 
         rotate_menu = process_menu.addMenu("旋转")
-        rotate_menu.addAction("↺ 90°左转", lambda: self._rotate_image(90))
-        rotate_menu.addAction("↻ 90°右转", lambda: self._rotate_image(-90))
-        rotate_menu.addAction("180°旋转", lambda: self._rotate_image(180))
+        rotate_menu.addAction("↺ 90°左转", lambda: self._canvas.rotate_view(90))
+        rotate_menu.addAction("↻ 90°右转", lambda: self._canvas.rotate_view(-90))
+        rotate_menu.addAction("180°旋转", lambda: self._canvas.rotate_view(180))
         rotate_menu.addAction("↔ 水平翻转", self._flip_horizontal)
         rotate_menu.addAction("↕ 竖直翻转", self._flip_vertical)
         rotate_menu.addSeparator()
-        rotate_menu.addAction("自动旋转校正", self._auto_rotate_image)
         rotate_menu.addAction("自定义角度...", self._rotate_custom)
+        rotate_menu.addAction("重置旋转", self._canvas.reset_rotation)
 
         analysis_menu = menubar.addMenu("分析")
         analysis_menu.addAction("孔洞分析", lambda: self._set_analysis_type("hole"))
@@ -97,12 +96,9 @@ class MainWindow(QMainWindow):
         toolbar.addAction("🔍-", self._canvas.zoom_out)
         toolbar.addAction("👁️ 图层", self._toggle_overlay)
         toolbar.addSeparator()
-        toolbar.addAction("↺ 左转", lambda: self._rotate_image(90))
-        toolbar.addAction("↻ 右转", lambda: self._rotate_image(-90))
+        toolbar.addAction("↺ 左转", lambda: self._canvas.rotate_view(90))
+        toolbar.addAction("↻ 右转", lambda: self._canvas.rotate_view(-90))
         toolbar.addAction("↔ 翻转", self._flip_horizontal)
-        self._rotation_mode_action = toolbar.addAction("🔄 旋转模式")
-        self._rotation_mode_action.setCheckable(True)
-        self._rotation_mode_action.toggled.connect(self._toggle_rotation_mode)
 
         central = QWidget()
         central_layout = QHBoxLayout(central)
@@ -128,7 +124,6 @@ class MainWindow(QMainWindow):
         self._tool_panel.morphology_requested.connect(self._on_morphology)
         self._tool_panel.view_report_requested.connect(self._generate_report)
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
-        self._canvas.rotate_requested.connect(self._rotate_delta)
 
     # ── Slots ──
 
@@ -257,12 +252,6 @@ class MainWindow(QMainWindow):
         self._store.update_session_report(session_id, html)
         self._report_viewer.show_report(html)
 
-    def _rotate_image(self, angle: float):
-        if self._canvas.image_bgr is None: return
-        rotated = ImageProcessor.rotate(self._canvas.image_bgr, angle)
-        self._canvas.load_image_from_array(rotated)
-        self._canvas.rotate_regions(angle)
-
     def _flip_horizontal(self):
         if self._canvas.image_bgr is None: return
         flipped = ImageProcessor.flip_horizontal(self._canvas.image_bgr)
@@ -273,27 +262,13 @@ class MainWindow(QMainWindow):
         flipped = ImageProcessor.flip_vertical(self._canvas.image_bgr)
         self._canvas.load_image_from_array(flipped)
 
-    def _auto_rotate_image(self):
-        if self._canvas.image_bgr is None: return
-        angle = ImageProcessor.detect_orientation(self._canvas.image_bgr)
-        correction = angle if angle <= 90 else angle - 180
-        if abs(correction) < 2:
-            QMessageBox.information(self, "自动旋转", f"图像方向已接近水平 (偏差{correction:.1f}°)")
-            return
-        self._rotate_image(correction)
-
     def _rotate_custom(self):
         if self._canvas.image_bgr is None: return
         from PySide6.QtWidgets import QInputDialog
         angle, ok = QInputDialog.getDouble(self, "自定义旋转", "角度 (正值=逆时针):",
                                            0, -180, 180, 1)
         if ok:
-            self._rotate_image(angle)
-
-    def _rotate_delta(self, delta: float):
-        """Rotate by delta angle (accumulates). Ctrl+scroll wheel."""
-        self._current_rotation += delta
-        self._rotate_image(delta)
+            self._canvas.rotate_view(angle)
 
     def _open_knowledge(self):
         dialog = KnowledgeDialog(self)
@@ -301,10 +276,3 @@ class MainWindow(QMainWindow):
 
     def _toggle_overlay(self):
         self._canvas.toggle_overlay(not self._canvas._overlay_visible)
-
-    def _toggle_rotation_mode(self, enabled: bool):
-        self._canvas.set_rotation_mode(enabled)
-        if enabled:
-            self._status_bar.showMessage("旋转模式: 拖动旋转 | 滚轮旋转 | 再次点击退出")
-        else:
-            self._status_bar.showMessage("", 0)

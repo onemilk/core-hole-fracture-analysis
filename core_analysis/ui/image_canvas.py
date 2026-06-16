@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QBrush
+from PySide6.QtGui import QPixmap, QImage, QPainter, QTransform
 from PySide6.QtCore import Qt, QRectF, Signal, QPointF
 from core_analysis.data.models import MaskRegion
 from core_analysis.engine.morphology_engine import MorphologyEngine
@@ -18,7 +18,6 @@ class Layer:
 class ImageCanvas(QGraphicsView):
     region_selected = Signal(int)
     color_sampled = Signal(np.ndarray)
-    rotate_requested = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,30 +31,34 @@ class ImageCanvas(QGraphicsView):
 
         self._image_item = QGraphicsPixmapItem()
         self._image_item.setZValue(Layer.IMAGE)
+        self._image_item.setTransformationMode(Qt.SmoothTransformation)
         self._scene.addItem(self._image_item)
 
         self._overlay_item = QGraphicsPixmapItem()
         self._overlay_item.setZValue(Layer.OVERLAY)
         self._overlay_item.setOpacity(0.5)
+        self._overlay_item.setTransformationMode(Qt.SmoothTransformation)
         self._scene.addItem(self._overlay_item)
 
         self._annotation_item = QGraphicsPixmapItem()
         self._annotation_item.setZValue(Layer.ANNOTATION)
         self._scene.addItem(self._annotation_item)
 
+        # State
         self._image_bgr = None
         self._regions = []
         self._overlay_visible = True
         self._annotation_visible = True
-        self._rotating = False
-        self._last_angle = 0.0
-        self._rotation_mode = False
+        self._rotation_angle = 0.0
+
+    # ── Image Loading ──
 
     def load_image(self, filepath: str):
         bgr = cv2.imread(filepath)
         if bgr is None:
             raise FileNotFoundError(f"Cannot load image: {filepath}")
         self._image_bgr = bgr
+        self._rotation_angle = 0.0
         self._refresh_image_layer()
         self._overlay_item.setPixmap(QPixmap())
         self._annotation_item.setPixmap(QPixmap())
@@ -64,6 +67,7 @@ class ImageCanvas(QGraphicsView):
 
     def load_image_from_array(self, bgr: np.ndarray):
         self._image_bgr = bgr.copy()
+        self._rotation_angle = 0.0
         self._refresh_image_layer()
         self._fit_to_window()
 
@@ -79,6 +83,28 @@ class ImageCanvas(QGraphicsView):
     def _fit_to_window(self):
         if self._image_bgr is not None:
             self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
+
+    # ── Rotation (Qt native transform, no pixel modification) ──
+
+    def rotate_view(self, delta_degrees: float):
+        """Rotate view by delta, applied to scene items. No pixel changes."""
+        self._rotation_angle = (self._rotation_angle + delta_degrees) % 360
+        center = self._scene.sceneRect().center()
+        t = QTransform()
+        t.translate(center.x(), center.y())
+        t.rotate(self._rotation_angle)
+        t.translate(-center.x(), -center.y())
+        self._image_item.setTransform(t)
+        self._overlay_item.setTransform(t)
+        self._annotation_item.setTransform(t)
+
+    def reset_rotation(self):
+        self._rotation_angle = 0.0
+        self._image_item.setTransform(QTransform())
+        self._overlay_item.setTransform(QTransform())
+        self._annotation_item.setTransform(QTransform())
+
+    # ── Overlay ──
 
     def set_regions(self, regions: list):
         self._regions = regions
@@ -105,6 +131,8 @@ class ImageCanvas(QGraphicsView):
     def toggle_annotation(self, visible: bool):
         self._annotation_visible = visible
 
+    # ── Zoom ──
+
     def zoom_in(self):
         self.scale(1.25, 1.25)
 
@@ -117,24 +145,10 @@ class ImageCanvas(QGraphicsView):
     def zoom_100(self):
         self.resetTransform()
 
-    def set_rotation_mode(self, enabled: bool):
-        """Toggle rotation mode: drag to rotate, wheel to rotate, no zoom.
-        When off: normal zoom/pan behavior."""
-        self._rotation_mode = enabled
-        if enabled:
-            self.setDragMode(QGraphicsView.NoDrag)
-            self.setCursor(Qt.CrossCursor)
-        else:
-            self.setDragMode(QGraphicsView.ScrollHandDrag)
-            self.setCursor(Qt.ArrowCursor)
+    # ── Mouse Events ──
 
     def mousePressEvent(self, event):
-        if self._rotation_mode and event.button() == Qt.LeftButton:
-            self._rotating = True
-            self._last_angle = self._angle_from_center(self.mapToScene(event.pos()))
-            event.accept()
-            return
-        if event.button() == Qt.LeftButton and not self._rotation_mode:
+        if event.button() == Qt.LeftButton:
             pos = self.mapToScene(event.pos())
             for i, region in enumerate(self._regions):
                 pts = np.array(region.contour, dtype=np.int32)
@@ -149,42 +163,13 @@ class ImageCanvas(QGraphicsView):
                     self.color_sampled.emit(self._image_bgr[py, px])
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
-        if self._rotating:
-            new_angle = self._angle_from_center(self.mapToScene(event.pos()))
-            delta = new_angle - self._last_angle
-            if abs(delta) > 0.5:
-                self.rotate_requested.emit(float(delta))
-                self._last_angle = new_angle
-            event.accept()
-            return
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if self._rotating:
-            self._rotating = False
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
-
-    def _angle_from_center(self, pos):
-        """Calculate angle (degrees) from image center to pos."""
-        if self._image_bgr is None:
-            return 0.0
-        h, w = self._image_bgr.shape[:2]
-        cx, cy = w / 2, h / 2
-        return float(np.degrees(np.arctan2(pos.y() - cy, pos.x() - cx)))
-
     def wheelEvent(self, event):
-        if self._rotation_mode:
-            delta = 5 if event.angleDelta().y() > 0 else -5
-            self.rotate_requested.emit(float(delta))
-            event.accept()
-            return
         if event.angleDelta().y() > 0:
             self.zoom_in()
         else:
             self.zoom_out()
+
+    # ── Properties ──
 
     @property
     def regions(self) -> list:
@@ -193,25 +178,6 @@ class ImageCanvas(QGraphicsView):
     @property
     def image_bgr(self):
         return self._image_bgr
-
-    def scrollContentsBy(self, dx, dy):
-        """Block all scroll/zoom during rotation mode."""
-        if self._rotation_mode:
-            return
-        super().scrollContentsBy(dx, dy)
-
-    def rotate_regions(self, angle: float):
-        """Rotate all overlay regions by given angle (degrees)."""
-        if not self._regions or self._image_bgr is None:
-            return
-        h, w = self._image_bgr.shape[:2]
-        updated = []
-        for r in self._regions:
-            result = MorphologyEngine.rotate_region(r, angle, (h, w))
-            if result is not None:
-                updated.append(result)
-        self._regions = updated
-        self._refresh_overlay()
 
     @property
     def image_size(self) -> tuple:
