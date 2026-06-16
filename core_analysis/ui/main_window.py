@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
         analysis_menu = menubar.addMenu("分析")
         analysis_menu.addAction("孔洞分析", lambda: self._set_analysis_type("hole"))
         analysis_menu.addAction("裂缝分析", lambda: self._set_analysis_type("fracture"))
+        analysis_menu.addAction("粒度分析", lambda: self._set_analysis_type("grain"))
         analysis_menu.addAction("标尺设定", self._set_scale)
         analysis_menu.addAction("生成报告", self._generate_report)
 
@@ -165,7 +166,8 @@ class MainWindow(QMainWindow):
 
     def _set_analysis_type(self, atype: str):
         self._analysis_type = atype
-        self.setWindowTitle(f"岩心孔洞裂缝分析教学系统 — {'孔洞分析' if atype == 'hole' else '裂缝分析'}")
+        type_names = {"hole": "孔洞分析", "fracture": "裂缝分析", "grain": "粒度分析"}
+        self.setWindowTitle(f"岩心孔洞裂缝分析教学系统 — {type_names.get(atype, '')}")
 
     def _auto_extract(self):
         if self._canvas.image_bgr is None: return
@@ -233,6 +235,12 @@ class MainWindow(QMainWindow):
             fill_stats = [{"status": "未充填", "count": len(results), "area": summary["total_area_mm2"], "percent": 100}]
             effect = {"valid": len(results), "semi_valid": 0, "invalid": 0}
             html = ReportGenerator.generate_hole_report(summary, fill_stats, effect, info)
+        elif self._analysis_type == "grain":
+            from core_analysis.engine.grain_analyzer import GrainAnalyzer
+            results, summary = GrainAnalyzer.analyze(self._canvas.regions, scale, image_area_px)
+            feret_data = [(r.feret_long_mm, r.feret_short_mm) for r in results]
+            summary["feret_data"] = feret_data
+            html = ReportGenerator.generate_grain_report(summary, info)
         else:
             results, summary = FractureAnalyzer.analyze(self._canvas.regions, scale, image_area_px, core_length_m=1.0)
             fractures = [{"length_mm": r.length_mm, "width_mm": r.width_mm, "area_mm2": r.area_mm2,
@@ -247,6 +255,8 @@ class MainWindow(QMainWindow):
             r.session_id = session_id
         if self._analysis_type == "hole":
             self._store.save_hole_results(results)
+        elif self._analysis_type == "grain":
+            self._store.save_grain_results(results)
         else:
             self._store.save_fracture_results(results)
         self._store.update_session_report(session_id, html)
