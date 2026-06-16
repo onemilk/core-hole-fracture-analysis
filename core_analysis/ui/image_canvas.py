@@ -47,6 +47,8 @@ class ImageCanvas(QGraphicsView):
         self._regions = []
         self._overlay_visible = True
         self._annotation_visible = True
+        self._rotating = False
+        self._last_angle = 0.0
 
     def load_image(self, filepath: str):
         bgr = cv2.imread(filepath)
@@ -115,6 +117,12 @@ class ImageCanvas(QGraphicsView):
         self.resetTransform()
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and event.modifiers() & Qt.ShiftModifier:
+            self._rotating = True
+            self._last_angle = self._angle_from_center(self.mapToScene(event.pos()))
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
         if event.button() == Qt.LeftButton:
             pos = self.mapToScene(event.pos())
             for i, region in enumerate(self._regions):
@@ -129,6 +137,33 @@ class ImageCanvas(QGraphicsView):
                 if 0 <= px < w and 0 <= py < h:
                     self.color_sampled.emit(self._image_bgr[py, px])
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._rotating:
+            new_angle = self._angle_from_center(self.mapToScene(event.pos()))
+            delta = new_angle - self._last_angle
+            if abs(delta) > 0.5:
+                self.rotate_requested.emit(float(delta))
+                self._last_angle = new_angle
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._rotating:
+            self._rotating = False
+            self.setCursor(Qt.ArrowCursor)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def _angle_from_center(self, pos):
+        """Calculate angle (degrees) from image center to pos."""
+        if self._image_bgr is None:
+            return 0.0
+        h, w = self._image_bgr.shape[:2]
+        cx, cy = w / 2, h / 2
+        return float(np.degrees(np.arctan2(pos.y() - cy, pos.x() - cx)))
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.AltModifier:
