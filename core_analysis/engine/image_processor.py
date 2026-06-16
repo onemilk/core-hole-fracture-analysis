@@ -89,9 +89,31 @@ class ImageProcessor:
         return float(np.median(angles))
 
     @staticmethod
+    def detect_orientation_by_contour(image: np.ndarray) -> float:
+        """Detect orientation from the largest contour's minimum area rectangle.
+        Returns angle (0-180). Designed for rock core cross-sections."""
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return ImageProcessor.detect_orientation(image)  # fallback
+        largest = max(contours, key=cv2.contourArea)
+        area_ratio = cv2.contourArea(largest) / (gray.shape[0] * gray.shape[1])
+        if area_ratio < 0.05:
+            return ImageProcessor.detect_orientation(image)  # too small, fallback
+        rect = cv2.minAreaRect(largest)
+        angle = rect[2]
+        if rect[1][0] < rect[1][1]:
+            angle = angle + 90
+        return angle % 180
+
+    @staticmethod
     def auto_rotate(image: np.ndarray) -> np.ndarray:
-        """Auto-detect orientation and rotate to horizontal."""
-        angle = ImageProcessor.detect_orientation(image)
+        """Auto-detect orientation (contour + line dual-strategy) and rotate to horizontal."""
+        angle = ImageProcessor.detect_orientation_by_contour(image)
         correction = angle if angle <= 90 else angle - 180
         if abs(correction) < 2:
             return image
