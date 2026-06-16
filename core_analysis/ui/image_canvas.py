@@ -49,6 +49,7 @@ class ImageCanvas(QGraphicsView):
         self._annotation_visible = True
         self._rotating = False
         self._last_angle = 0.0
+        self._rotation_mode = False
 
     def load_image(self, filepath: str):
         bgr = cv2.imread(filepath)
@@ -116,14 +117,24 @@ class ImageCanvas(QGraphicsView):
     def zoom_100(self):
         self.resetTransform()
 
+    def set_rotation_mode(self, enabled: bool):
+        """Toggle rotation mode: drag to rotate, wheel to rotate, no zoom.
+        When off: normal zoom/pan behavior."""
+        self._rotation_mode = enabled
+        if enabled:
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.setCursor(Qt.CrossCursor)
+        else:
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.setCursor(Qt.ArrowCursor)
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and event.modifiers() & Qt.ShiftModifier:
+        if self._rotation_mode and event.button() == Qt.LeftButton:
             self._rotating = True
             self._last_angle = self._angle_from_center(self.mapToScene(event.pos()))
-            self.setCursor(Qt.ClosedHandCursor)
             event.accept()
             return
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and not self._rotation_mode:
             pos = self.mapToScene(event.pos())
             for i, region in enumerate(self._regions):
                 pts = np.array(region.contour, dtype=np.int32)
@@ -152,7 +163,6 @@ class ImageCanvas(QGraphicsView):
     def mouseReleaseEvent(self, event):
         if self._rotating:
             self._rotating = False
-            self.setCursor(Qt.ArrowCursor)
             event.accept()
             return
         super().mouseReleaseEvent(event)
@@ -166,12 +176,12 @@ class ImageCanvas(QGraphicsView):
         return float(np.degrees(np.arctan2(pos.y() - cy, pos.x() - cx)))
 
     def wheelEvent(self, event):
-        if self._rotating:
-            return
-        if event.modifiers() & Qt.AltModifier:
+        if self._rotation_mode:
             delta = 5 if event.angleDelta().y() > 0 else -5
             self.rotate_requested.emit(float(delta))
-        elif event.angleDelta().y() > 0:
+            event.accept()
+            return
+        if event.angleDelta().y() > 0:
             self.zoom_in()
         else:
             self.zoom_out()

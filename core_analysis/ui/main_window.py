@@ -100,6 +100,9 @@ class MainWindow(QMainWindow):
         toolbar.addAction("↺ 左转", lambda: self._rotate_image(90))
         toolbar.addAction("↻ 右转", lambda: self._rotate_image(-90))
         toolbar.addAction("↔ 翻转", self._flip_horizontal)
+        self._rotation_mode_action = toolbar.addAction("🔄 旋转模式")
+        self._rotation_mode_action.setCheckable(True)
+        self._rotation_mode_action.toggled.connect(self._toggle_rotation_mode)
 
         central = QWidget()
         central_layout = QHBoxLayout(central)
@@ -298,3 +301,10 @@ class MainWindow(QMainWindow):
 
     def _toggle_overlay(self):
         self._canvas.toggle_overlay(not self._canvas._overlay_visible)
+
+    def _toggle_rotation_mode(self, enabled: bool):
+        self._canvas.set_rotation_mode(enabled)
+        if enabled:
+            self._status_bar.showMessage("旋转模式: 拖动旋转 | 滚轮旋转 | 再次点击退出")
+        else:
+            self._status_bar.showMessage("", 0)
