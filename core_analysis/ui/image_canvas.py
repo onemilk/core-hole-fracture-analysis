@@ -166,6 +166,8 @@ class ImageCanvas(QGraphicsView):
         return float(np.degrees(np.arctan2(pos.y() - cy, pos.x() - cx)))
 
     def wheelEvent(self, event):
+        if self._rotating:
+            return
         if event.modifiers() & Qt.AltModifier:
             delta = 5 if event.angleDelta().y() > 0 else -5
             self.rotate_requested.emit(float(delta))
