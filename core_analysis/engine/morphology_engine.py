@@ -77,3 +77,27 @@ class MorphologyEngine:
                 cv2.drawContours(mask, [cnt], -1, 255, -1)
         result = MorphologyEngine._mask_to_region(mask, bx - pad, by - pad)
         return result if result is not None else region
+
+    @staticmethod
+    def rotate_region(region: MaskRegion, angle: float,
+                      image_shape: tuple) -> Optional[MaskRegion]:
+        """Rotate a MaskRegion by angle. Returns new MaskRegion or None."""
+        h, w = image_shape
+        center = (w / 2, h / 2)
+        matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+        cos = abs(matrix[0, 0])
+        sin = abs(matrix[0, 1])
+        new_w = int(h * sin + w * cos)
+        new_h = int(h * cos + w * sin)
+        matrix[0, 2] += new_w / 2 - center[0]
+        matrix[1, 2] += new_h / 2 - center[1]
+
+        mask = np.zeros(image_shape, dtype=np.uint8)
+        pts = np.array(region.contour, dtype=np.int32)
+        if pts.ndim == 2 and pts.shape[0] >= 3:
+            cv2.drawContours(mask, [pts], -1, 255, -1)
+        rotated_mask = cv2.warpAffine(mask, matrix, (new_w, new_h),
+                                      borderMode=cv2.BORDER_CONSTANT,
+                                      borderValue=0)
+
+        return MorphologyEngine._mask_to_region(rotated_mask, 0, 0)

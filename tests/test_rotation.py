@@ -51,3 +51,24 @@ class TestRotation:
         result = ImageProcessor.auto_rotate(img)
         assert result.shape == img.shape
         assert result.dtype == np.uint8
+
+
+class TestRegionRotation:
+    def test_rotate_region_stays_valid(self):
+        """Region rotated 90 should still produce a valid MaskRegion."""
+        import cv2
+        from core_analysis.data.models import MaskRegion
+        from core_analysis.engine.morphology_engine import MorphologyEngine
+
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        cv2.rectangle(mask, (20, 45), (80, 55), 255, -1)
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        region = MaskRegion(
+            contour=cnts[0].squeeze(1).tolist(),
+            area_px=cv2.contourArea(cnts[0]),
+            centroid=(50, 50),
+            bbox=(20, 45, 60, 10)
+        )
+        result = MorphologyEngine.rotate_region(region, 90, (100, 100))
+        assert result is not None
+        assert result.area_px > 0
