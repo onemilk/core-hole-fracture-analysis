@@ -18,6 +18,7 @@ class Layer:
 class ImageCanvas(QGraphicsView):
     region_selected = Signal(int)
     color_sampled = Signal(np.ndarray)
+    rotate_requested = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -130,7 +131,10 @@ class ImageCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def wheelEvent(self, event):
-        if event.angleDelta().y() > 0:
+        if event.modifiers() & Qt.ControlModifier:
+            delta = 5 if event.angleDelta().y() > 0 else -5
+            self.rotate_requested.emit(float(delta))
+        elif event.angleDelta().y() > 0:
             self.zoom_in()
         else:
             self.zoom_out()

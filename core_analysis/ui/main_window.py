@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self._current_image_id = None
         self._current_image_record = None
         self._analysis_type = "hole"
+        self._current_rotation = 0.0  # accumulated rotation angle
 
         self._setup_ui()
         self._connect_signals()
@@ -124,6 +125,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.morphology_requested.connect(self._on_morphology)
         self._tool_panel.view_report_requested.connect(self._generate_report)
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
+        self._canvas.rotate_requested.connect(self._rotate_delta)
 
     # ── Slots ──
 
@@ -284,6 +286,11 @@ class MainWindow(QMainWindow):
                                            0, -180, 180, 1)
         if ok:
             self._rotate_image(angle)
+
+    def _rotate_delta(self, delta: float):
+        """Rotate by delta angle (accumulates). Ctrl+scroll wheel."""
+        self._current_rotation += delta
+        self._rotate_image(delta)
 
     def _open_knowledge(self):
         dialog = KnowledgeDialog(self)
