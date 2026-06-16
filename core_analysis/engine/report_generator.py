@@ -6,6 +6,8 @@ import os
 from jinja2 import Environment, FileSystemLoader
 import matplotlib
 matplotlib.use('Agg')
+matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'DejaVu Sans']
+matplotlib.rcParams['axes.unicode_minus'] = False
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
