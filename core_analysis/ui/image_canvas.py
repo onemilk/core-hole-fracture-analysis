@@ -235,7 +235,7 @@ class ImageCanvas(QGraphicsView):
     def mouseReleaseEvent(self, event):
         if getattr(self, '_is_drawing', False):
             self._is_drawing = False
-            self._apply_brush()
+            # Don't auto-apply — user confirms via button or Enter key
             event.accept()
             return
         super().mouseReleaseEvent(event)
