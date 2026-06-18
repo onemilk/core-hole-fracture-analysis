@@ -300,8 +300,7 @@ class MainWindow(QMainWindow):
             else:
                 updated.append(r)
         self._canvas.set_regions(updated)
-        self._selected_regions.clear()
-        self._status_bar.showMessage(f"{op} 完成")
+        self._status_bar.showMessage(f"{op} 完成 — 区域已更新")
 
     def _on_denoise(self, threshold: int):
         regions = self._canvas.regions
