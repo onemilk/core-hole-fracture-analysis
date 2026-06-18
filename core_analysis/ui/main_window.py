@@ -189,27 +189,29 @@ class MainWindow(QMainWindow):
         self._sampled_point = (px, py)
 
     def _on_roi_select(self):
-        """Activate ROI selection mode: user drags a rectangle on the canvas."""
-        from PySide6.QtWidgets import QRubberBand
-        from PySide6.QtCore import QRect
-        self._rubber_band = QRubberBand(QRubberBand.Rectangle, self._canvas)
+        """Activate ROI selection: drag on canvas to define analysis rectangle."""
         self._canvas._roi_rect_start = None
-        self._canvas.viewport().installEventFilter(self)
+        self._roi_dragging = False
+        self._canvas.setCursor(Qt.CrossCursor)
+        self._status_bar.showMessage("在图像上拖拽框定分析区域（仅分析框内）")
 
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
-        if obj == self._canvas.viewport():
+        if obj == self._canvas.viewport() and self._canvas._roi_rect_start is not None or getattr(self, '_roi_dragging', False):
             if event.type() == QEvent.MouseButtonPress:
                 self._canvas._roi_rect_start = event.pos()
-                self._rubber_band.setGeometry(QRect(event.pos(), event.pos()))
-                self._rubber_band.show()
+                self._roi_dragging = True
                 return True
-            elif event.type() == QEvent.MouseMove and self._canvas._roi_rect_start is not None:
-                self._rubber_band.setGeometry(
-                    QRect(self._canvas._roi_rect_start, event.pos()).normalized())
+            elif event.type() == QEvent.MouseMove and self._roi_dragging:
+                p1 = self._canvas._roi_rect_start
+                p2 = event.pos()
+                sp1 = self._canvas.mapToScene(p1)
+                sp2 = self._canvas.mapToScene(p2)
+                self._canvas.set_roi_rect(int(sp1.x()), int(sp1.y()), int(sp2.x()), int(sp2.y()))
                 return True
-            elif event.type() == QEvent.MouseButtonRelease and self._canvas._roi_rect_start is not None:
-                self._rubber_band.hide()
+            elif event.type() == QEvent.MouseButtonRelease and self._roi_dragging:
+                self._roi_dragging = False
+                self._canvas.setCursor(Qt.ArrowCursor)
                 p1 = self._canvas.mapToScene(self._canvas._roi_rect_start)
                 p2 = self._canvas.mapToScene(event.pos())
                 self._canvas.set_roi_rect(int(p1.x()), int(p1.y()), int(p2.x()), int(p2.y()))
