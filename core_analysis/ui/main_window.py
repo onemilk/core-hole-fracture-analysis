@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self._current_image_id = None
         self._current_image_record = None
         self._analysis_type = "hole"
+        self._current_model = "classic"
 
         self._setup_ui()
         self._connect_signals()
@@ -125,6 +126,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.morphology_requested.connect(self._on_morphology)
         self._tool_panel.view_report_requested.connect(self._generate_report)
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
+        self._tool_panel.model_changed.connect(lambda m: setattr(self, '_current_model', m))
 
     # ── Slots ──
 
@@ -171,13 +173,19 @@ class MainWindow(QMainWindow):
 
     def _auto_extract(self):
         if self._canvas.image_bgr is None: return
-        h, w = self._canvas.image_size
-        sample_color = self._canvas.image_bgr[h // 2, w // 2]
-        tolerance = self._tool_panel.match_tolerance()
-        regions = RegionExtractor.extract_by_color_sample(
-            self._canvas.image_bgr, sample_color, tolerance)
-        threshold = self._tool_panel.denoise_threshold()
-        regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
+        if self._current_model == "unet":
+            from core_analysis.engine.unet_model import unet_extract_regions
+            regions = unet_extract_regions(self._canvas.image_bgr)
+            threshold = self._tool_panel.denoise_threshold()
+            regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
+        else:
+            h, w = self._canvas.image_size
+            sample_color = self._canvas.image_bgr[h // 2, w // 2]
+            tolerance = self._tool_panel.match_tolerance()
+            regions = RegionExtractor.extract_by_color_sample(
+                self._canvas.image_bgr, sample_color, tolerance)
+            threshold = self._tool_panel.denoise_threshold()
+            regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
         self._canvas.set_regions(regions)
         self._detect_label.setText(f"检测: {len(regions)}个区域")
 

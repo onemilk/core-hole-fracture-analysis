@@ -17,6 +17,7 @@ class ToolPanel(QWidget):
     fill_status_changed = Signal(str)
     fill_material_changed = Signal(str)
     effectiveness_changed = Signal(str)
+    model_changed = Signal(str)  # "classic" | "unet"
     save_params_requested = Signal()
     view_report_requested = Signal()
 
@@ -76,6 +77,12 @@ class ToolPanel(QWidget):
         self._continuous_cb = QCheckBox("连续区域")
         self._continuous_cb.toggled.connect(self.continuous_mode_changed.emit)
         auto_layout.addWidget(self._continuous_cb)
+        self._model_combo = QComboBox()
+        self._model_combo.addItems(["经典颜色分割", "U-Net 深度学习"])
+        self._model_combo.currentIndexChanged.connect(
+            lambda i: self.model_changed.emit("unet" if i == 1 else "classic"))
+        auto_layout.addWidget(QLabel("分割模型"))
+        auto_layout.addWidget(self._model_combo)
         extract_btn = QPushButton("一键提取")
         extract_btn.clicked.connect(self.auto_extract_requested.emit)
         auto_layout.addWidget(extract_btn)
