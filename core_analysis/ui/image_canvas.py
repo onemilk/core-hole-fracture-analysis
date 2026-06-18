@@ -19,6 +19,7 @@ class ImageCanvas(QGraphicsView):
     region_selected = Signal(int)
     color_sampled = Signal(np.ndarray)
     point_sampled = Signal(int, int)  # x, y
+    brush_applied = Signal(int)  # number of regions after brush
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -289,7 +290,7 @@ class ImageCanvas(QGraphicsView):
         new_regions = []
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area < 5: continue
+            if area < 2: continue
             M = cv2.moments(cnt)
             cx = M["m10"] / M["m00"] if M["m00"] != 0 else 0.0
             cy = M["m01"] / M["m00"] if M["m00"] != 0 else 0.0
@@ -298,9 +299,13 @@ class ImageCanvas(QGraphicsView):
             new_regions.append(MaskRegion(
                 contour=cnt.squeeze(1).tolist() if len(cnt.shape) == 3 else [],
                 area_px=area, centroid=(cx, cy), bbox=(x, y, bw, bh)))
+        count = len(new_regions)
         self.set_regions(new_regions)
         self._brush_mask = np.zeros((h, w), dtype=np.uint8)
+        self._annotation_item.setPixmap(QPixmap())
         self._annotation_item.setVisible(False)
+        self.brush_applied.emit(count)
+        return count
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:

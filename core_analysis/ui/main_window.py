@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
         self._canvas.color_sampled.connect(self._on_color_sampled)
         self._canvas.point_sampled.connect(self._on_point_sampled)
         self._canvas.region_selected.connect(self._on_region_selected)
+        self._canvas.brush_applied.connect(lambda n: self._detect_label.setText(f"检测: {n}个区域"))
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
         self._tool_panel.tool_changed.connect(self._on_tool_changed)
