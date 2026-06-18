@@ -213,8 +213,19 @@ class MainWindow(QMainWindow):
 
     def _on_tool_changed(self, tool_id: str):
         self._multi_select = (tool_id == "multi_select")
-        mode = "多选模式：点击累加选中" if self._multi_select else "单选模式：点击替换选中"
-        self._status_bar.showMessage(mode)
+        if tool_id == "eraser_minus":
+            self._canvas.set_drawing_mode("erase")
+            self._status_bar.showMessage("🧹 橡皮擦-：涂抹删除误检区域")
+        elif tool_id == "eraser_plus":
+            self._canvas.set_drawing_mode("add")
+            self._status_bar.showMessage("🧹+ 橡皮擦+：涂抹补充漏检区域")
+        elif tool_id == "brush":
+            self._canvas.set_drawing_mode("add")
+            self._status_bar.showMessage("✏️ 画笔：自由绘制区域")
+        else:
+            self._canvas.set_drawing_mode(None)
+            mode = "多选模式：点击累加选中" if self._multi_select else "单选模式：点击替换选中"
+            self._status_bar.showMessage(mode)
 
     def _on_roi_select(self):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
