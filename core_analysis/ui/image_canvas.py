@@ -162,9 +162,11 @@ class ImageCanvas(QGraphicsView):
         self._drawing_mode = mode
         if mode:
             self._brush_mask = np.zeros(self._image_bgr.shape[:2], dtype=np.uint8) if self._image_bgr is not None else None
+            self.setDragMode(QGraphicsView.NoDrag)  # disable pan during drawing
             self.setCursor(Qt.CrossCursor)
         else:
             self._brush_mask = None
+            self.setDragMode(QGraphicsView.ScrollHandDrag)  # restore pan
             self.setCursor(Qt.ArrowCursor)
 
     def _draw_sample_marker(self, px, py):
