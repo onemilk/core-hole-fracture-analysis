@@ -145,6 +145,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
         self._tool_panel.tool_changed.connect(self._on_tool_changed)
+        self._canvas.viewport().installEventFilter(self)
 
     # ── Slots ──
 
@@ -243,7 +244,18 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
-        if obj == self._canvas.viewport() and self._roi_mode:
+        # Drawing mode: handle brush strokes
+        if obj == self._canvas.viewport() and self._canvas._drawing_mode:
+            if event.type() == QEvent.MouseButtonPress:
+                self._canvas.mousePressEvent(event)
+                return True
+            elif event.type() == QEvent.MouseMove:
+                self._canvas.mouseMoveEvent(event)
+                return True
+            elif event.type() == QEvent.MouseButtonRelease:
+                self._canvas.mouseReleaseEvent(event)
+                return True
+        elif obj == self._canvas.viewport() and self._roi_mode:
             if event.type() == QEvent.MouseButtonPress:
                 self._canvas._roi_rect_start = event.pos()
                 return True
