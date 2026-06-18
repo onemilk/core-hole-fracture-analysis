@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
 import Analysis from '../models/Analysis.js';
 import { runAnalysis } from '../services/engine.js';
 
@@ -41,6 +41,15 @@ router.get('/sample/:sampleId', async (req, res) => {
   const analyses = await Analysis.find({ sample_id: req.params.sampleId })
     .sort({ created_at: -1 }).limit(20);
   res.json(analyses);
+});
+
+router.delete('/:id', authMiddleware, roleMiddleware('admin'), async (req, res) => {
+  try {
+    await Analysis.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;

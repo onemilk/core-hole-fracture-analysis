@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
 import Sample from '../models/Sample.js';
 
 const router = Router();
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
   res.json(samples);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, roleMiddleware('admin', 'teacher'), async (req, res) => {
   try {
     const sample = await Sample.create({ ...req.body, created_by: req.user.id });
     res.status(201).json(sample);
@@ -43,6 +43,15 @@ router.post('/:id/images', upload.single('image'), async (req, res) => {
     });
     await sample.save();
     res.json(sample);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/:id', authMiddleware, roleMiddleware('admin'), async (req, res) => {
+  try {
+    await Sample.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

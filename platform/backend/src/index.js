@@ -11,10 +11,12 @@ app.use(express.json());
 import authRoutes from './routes/auth.js';
 import sampleRoutes from './routes/samples.js';
 import analysisRoutes from './routes/analysis.js';
+import adminRoutes from './routes/admin.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/samples', sampleRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
