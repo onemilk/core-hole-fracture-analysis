@@ -244,16 +244,20 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
-        # Drawing mode: handle brush strokes
+        # Drawing mode: handle brush strokes directly
         if obj == self._canvas.viewport() and self._canvas._drawing_mode:
+            pos = self._canvas.mapToScene(event.pos())
             if event.type() == QEvent.MouseButtonPress:
-                self._canvas.mousePressEvent(event)
+                self._canvas._draw_brush_at(pos)
+                self._canvas._is_drawing = True
                 return True
-            elif event.type() == QEvent.MouseMove:
-                self._canvas.mouseMoveEvent(event)
+            elif event.type() == QEvent.MouseMove and getattr(self._canvas, '_is_drawing', False):
+                self._canvas._draw_brush_at(pos)
                 return True
-            elif event.type() == QEvent.MouseButtonRelease:
-                self._canvas.mouseReleaseEvent(event)
+            elif event.type() == QEvent.MouseButtonRelease and getattr(self._canvas, '_is_drawing', False):
+                self._canvas._is_drawing = False
+                count = self._canvas._apply_brush()
+                self._detect_label.setText(f"检测: {count}个区域")
                 return True
         elif obj == self._canvas.viewport() and self._roi_mode:
             if event.type() == QEvent.MouseButtonPress:
