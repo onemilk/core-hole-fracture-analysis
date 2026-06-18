@@ -1,5 +1,7 @@
 """U-Net inference wrapper for engine integration."""
 import os
+import sys
+import io
 import numpy as np
 import cv2
 import torch
@@ -13,7 +15,13 @@ def _get_model():
     if _model is None:
         device = torch.device("cpu")
         if os.path.exists(MODEL_PATH):
-            _model = torch.jit.load(MODEL_PATH, map_location=device)
+            with open(MODEL_PATH, 'rb') as f:
+                buffer = io.BytesIO(f.read())
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "platform", "data"))
+            from model import UNet
+            _model = UNet(in_ch=3, out_ch=1)
+            _model.load_state_dict(torch.load(buffer, map_location=device, weights_only=True))
+            _model.to(device)
             _model.eval()
         else:
             raise FileNotFoundError(f"Model not found at {MODEL_PATH}. Run train.py first.")
