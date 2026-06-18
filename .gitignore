@@ -10,3 +10,6 @@ uploads/
 node_modules/
 *.docx
 *.pdf
+# U-Net model weights — large binary files, regenerated via train.py
+platform/data/models/unet_best.pt
+platform/data/models/unet_traced.pt
