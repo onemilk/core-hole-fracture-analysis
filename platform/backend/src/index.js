@@ -8,11 +8,17 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+import authRoutes from './routes/auth.js';
+import sampleRoutes from './routes/samples.js';
+import analysisRoutes from './routes/analysis.js';
+
+app.use('/api/auth', authRoutes);
+app.use('/api/samples', sampleRoutes);
+app.use('/api/analysis', analysisRoutes);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// Routes will be wired in Task 5
 
 connectDB().then(() => {
   app.listen(PORT, () => {
