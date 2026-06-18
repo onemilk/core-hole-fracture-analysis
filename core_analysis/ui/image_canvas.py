@@ -115,7 +115,9 @@ class ImageCanvas(QGraphicsView):
 
     def set_regions(self, regions: list):
         self._regions = regions
-        self._selected_regions.clear()
+        # Keep selections valid — remove stale indices
+        max_idx = len(regions) - 1
+        self._selected_regions = {i for i in self._selected_regions if i <= max_idx}
         self._refresh_overlay()
 
     def toggle_region_selection(self, idx: int):

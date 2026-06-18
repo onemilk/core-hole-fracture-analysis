@@ -283,7 +283,9 @@ class MainWindow(QMainWindow):
     def _on_morphology(self, op: str):
         regions = self._canvas.regions
         if not regions: return
-        targets = self._canvas._selected_regions if self._canvas._selected_regions else set(range(len(regions)))
+        selected = self._canvas._selected_regions
+        targets = selected.copy() if selected else set(range(len(regions)))
+        op_names = {"dilate": "膨胀", "erode": "腐蚀", "fill": "填充"}
         updated = []
         for i, r in enumerate(regions):
             if i in targets:
@@ -300,7 +302,9 @@ class MainWindow(QMainWindow):
             else:
                 updated.append(r)
         self._canvas.set_regions(updated)
-        self._status_bar.showMessage(f"{op} 完成 — 区域已更新")
+        n = len(targets)
+        total = len(regions)
+        self._status_bar.showMessage(f"{op_names.get(op, op)} 完成 — 处理了 {n}/{total} 个区域")
 
     def _on_denoise(self, threshold: int):
         regions = self._canvas.regions
