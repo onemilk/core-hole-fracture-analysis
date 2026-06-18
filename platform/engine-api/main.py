@@ -11,6 +11,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+from unet_model import unet_extract_regions
+
 from engine.image_processor import ImageProcessor
 from engine.region_extractor import RegionExtractor
 from engine.morphology_engine import MorphologyEngine
@@ -26,6 +28,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
 class AnalysisRequest(BaseModel):
     image_base64: str
     analysis_type: str  # "hole" | "fracture" | "grain"
+    model: str = "classic"  # "classic" | "unet"
     scale_mm_per_px: float = 0.05
     match_tolerance: int = 30
     denoise_threshold: int = 10
@@ -51,14 +54,16 @@ def analyze(req: AnalysisRequest):
         h, w = bgr.shape[:2]
         image_area_px = h * w
 
-        # Preprocess
-        preprocessed = ImageProcessor.auto_levels(bgr)
-
-        # Extract regions
-        center_color = preprocessed[h // 2, w // 2]
-        regions = RegionExtractor.extract_by_color_sample(
-            preprocessed, center_color, req.match_tolerance)
-        regions = MorphologyEngine.denoise_by_area(regions, req.denoise_threshold)
+        # Preprocess and extract regions
+        if req.model == "unet":
+            regions = unet_extract_regions(bgr)
+            regions = MorphologyEngine.denoise_by_area(regions, req.denoise_threshold)
+        else:
+            preprocessed = ImageProcessor.auto_levels(bgr)
+            center_color = preprocessed[h // 2, w // 2]
+            regions = RegionExtractor.extract_by_color_sample(
+                preprocessed, center_color, req.match_tolerance)
+            regions = MorphologyEngine.denoise_by_area(regions, req.denoise_threshold)
 
         # Analyze
         if req.analysis_type == "hole":
