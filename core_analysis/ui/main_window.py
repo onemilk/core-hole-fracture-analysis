@@ -246,12 +246,21 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QEvent
         # Drawing mode: handle brush strokes directly
         if obj == self._canvas.viewport() and self._canvas._drawing_mode:
-            pos = self._canvas.mapToScene(event.pos())
             if event.type() == QEvent.MouseButtonPress:
-                self._canvas._draw_brush_at(pos)
-                self._canvas._is_drawing = True
-                return True
+                if event.button() == Qt.RightButton:
+                    # Right-click: immediately apply and add single point
+                    pos = self._canvas.mapToScene(event.pos())
+                    self._canvas._draw_brush_at(pos)
+                    count = self._canvas._apply_brush()
+                    self._detect_label.setText(f"检测: {count}个区域")
+                    return True
+                else:
+                    pos = self._canvas.mapToScene(event.pos())
+                    self._canvas._draw_brush_at(pos)
+                    self._canvas._is_drawing = True
+                    return True
             elif event.type() == QEvent.MouseMove and getattr(self._canvas, '_is_drawing', False):
+                pos = self._canvas.mapToScene(event.pos())
                 self._canvas._draw_brush_at(pos)
                 return True
             elif event.type() == QEvent.MouseButtonRelease and getattr(self._canvas, '_is_drawing', False):
@@ -259,6 +268,12 @@ class MainWindow(QMainWindow):
                 count = self._canvas._apply_brush()
                 self._detect_label.setText(f"检测: {count}个区域")
                 return True
+            elif event.type() == QEvent.KeyPress:
+                if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                    if self._canvas._brush_mask is not None:
+                        count = self._canvas._apply_brush()
+                        self._detect_label.setText(f"检测: {count}个区域")
+                    return True
         elif obj == self._canvas.viewport() and self._roi_mode:
             if event.type() == QEvent.MouseButtonPress:
                 self._canvas._roi_rect_start = event.pos()
