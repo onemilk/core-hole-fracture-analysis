@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         self._sampled_color = None
         self._sampled_point = None
         self._roi_mode = False
+        self._selected_regions = set()
 
         self._setup_ui()
         self._connect_signals()
@@ -133,6 +134,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.save_params_requested.connect(self._on_save_params)
         self._canvas.color_sampled.connect(self._on_color_sampled)
         self._canvas.point_sampled.connect(self._on_point_sampled)
+        self._canvas.region_selected.connect(self._on_region_selected)
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
 
@@ -191,6 +193,13 @@ class MainWindow(QMainWindow):
     def _on_point_sampled(self, px, py):
         if self._roi_mode: return  # suppress during ROI selection
         self._sampled_point = (px, py)
+
+    def _on_region_selected(self, idx):
+        if idx in self._selected_regions:
+            self._selected_regions.discard(idx)
+        else:
+            self._selected_regions.add(idx)
+        self._status_bar.showMessage(f"已选中 {len(self._selected_regions)} 个区域 — 编辑仅影响选中区域")
 
     def _on_roi_select(self):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
@@ -273,19 +282,25 @@ class MainWindow(QMainWindow):
     def _on_morphology(self, op: str):
         regions = self._canvas.regions
         if not regions: return
+        targets = self._selected_regions if self._selected_regions else set(range(len(regions)))
         updated = []
-        for r in regions:
-            if op == "dilate":
-                result = MorphologyEngine.dilate_region(r)
-            elif op == "erode":
-                result = MorphologyEngine.erode_region(r)
-            elif op == "fill":
-                result = MorphologyEngine.fill_holes(r)
+        for i, r in enumerate(regions):
+            if i in targets:
+                if op == "dilate":
+                    result = MorphologyEngine.dilate_region(r)
+                elif op == "erode":
+                    result = MorphologyEngine.erode_region(r)
+                elif op == "fill":
+                    result = MorphologyEngine.fill_holes(r)
+                else:
+                    result = r
+                if result is not None:
+                    updated.append(result)
             else:
-                result = r
-            if result is not None:
-                updated.append(result)
+                updated.append(r)
         self._canvas.set_regions(updated)
+        self._selected_regions.clear()
+        self._status_bar.showMessage(f"{op} 完成")
 
     def _on_denoise(self, threshold: int):
         regions = self._canvas.regions
