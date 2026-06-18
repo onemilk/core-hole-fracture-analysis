@@ -8,10 +8,13 @@ from core_analysis.data.models import MaskRegion
 
 class MorphologyEngine:
     @staticmethod
-    def _region_to_mask(region: MaskRegion, shape: tuple) -> np.ndarray:
+    def _region_to_mask(region: MaskRegion, shape: tuple,
+                        offset_x: int = 0, offset_y: int = 0) -> np.ndarray:
+        """Draw region contour into mask, shifted by (offset_x, offset_y)."""
         mask = np.zeros(shape, dtype=np.uint8)
         pts = np.array(region.contour, dtype=np.int32)
         if pts.ndim == 2 and pts.shape[0] >= 3:
+            pts = pts - [offset_x, offset_y]
             cv2.drawContours(mask, [pts], -1, 255, -1)
         return mask
 
@@ -41,22 +44,24 @@ class MorphologyEngine:
                       iterations: int = 1) -> Optional[MaskRegion]:
         bx, by, bw, bh = region.bbox
         pad = kernel_size * iterations + 5
+        ox, oy = bx - pad, by - pad
         shape = (bh + pad * 2, bw + pad * 2)
-        mask = MorphologyEngine._region_to_mask(region, shape)
+        mask = MorphologyEngine._region_to_mask(region, shape, ox, oy)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
         dilated = cv2.dilate(mask, kernel, iterations=iterations)
-        return MorphologyEngine._mask_to_region(dilated, bx - pad, by - pad)
+        return MorphologyEngine._mask_to_region(dilated, ox, oy)
 
     @staticmethod
     def erode_region(region: MaskRegion, kernel_size: int = 3,
                      iterations: int = 1) -> Optional[MaskRegion]:
         bx, by, bw, bh = region.bbox
         pad = kernel_size * iterations + 5
+        ox, oy = bx - pad, by - pad
         shape = (bh + pad * 2, bw + pad * 2)
-        mask = MorphologyEngine._region_to_mask(region, shape)
+        mask = MorphologyEngine._region_to_mask(region, shape, ox, oy)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
         eroded = cv2.erode(mask, kernel, iterations=iterations)
-        return MorphologyEngine._mask_to_region(eroded, bx - pad, by - pad)
+        return MorphologyEngine._mask_to_region(eroded, ox, oy)
 
     @staticmethod
     def denoise_by_area(regions: list, min_area_px: float = 10,
@@ -67,8 +72,9 @@ class MorphologyEngine:
     def fill_holes(region: MaskRegion, max_hole_size: float = 500) -> Optional[MaskRegion]:
         bx, by, bw, bh = region.bbox
         pad = 20
+        ox, oy = bx - pad, by - pad
         shape = (bh + pad * 2, bw + pad * 2)
-        mask = MorphologyEngine._region_to_mask(region, shape)
+        mask = MorphologyEngine._region_to_mask(region, shape, ox, oy)
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
         if hierarchy is None:
             return region
