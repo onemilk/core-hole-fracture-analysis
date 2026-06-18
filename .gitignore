@@ -8,3 +8,5 @@ __pycache__/
 debug_mask.png
 uploads/
 node_modules/
+*.docx
+*.pdf
