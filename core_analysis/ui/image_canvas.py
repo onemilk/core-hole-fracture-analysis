@@ -162,11 +162,12 @@ class ImageCanvas(QGraphicsView):
         self._drawing_mode = mode
         if mode:
             self._brush_mask = np.zeros(self._image_bgr.shape[:2], dtype=np.uint8) if self._image_bgr is not None else None
-            self.setDragMode(QGraphicsView.NoDrag)  # disable pan during drawing
+            self.setDragMode(QGraphicsView.NoDrag)
             self.setCursor(Qt.CrossCursor)
+            self.setFocus()  # ensure keyboard events reach us
         else:
             self._brush_mask = None
-            self.setDragMode(QGraphicsView.ScrollHandDrag)  # restore pan
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
             self.setCursor(Qt.ArrowCursor)
 
     def _draw_sample_marker(self, px, py):
@@ -308,6 +309,12 @@ class ImageCanvas(QGraphicsView):
         self._annotation_item.setVisible(False)
         self.brush_applied.emit(count)
         return count
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if self._brush_mask is not None and self._brush_mask.any():
+                self._apply_brush()
+        super().keyPressEvent(event)
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
