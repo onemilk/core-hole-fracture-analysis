@@ -53,6 +53,7 @@ class ImageCanvas(QGraphicsView):
         self._rotation_angle = 0.0
         self._analysis_mask = None
         self._roi_rect_start = None
+        self._selected_regions = set()
 
     # ── Image Loading ──
 
@@ -114,6 +115,14 @@ class ImageCanvas(QGraphicsView):
 
     def set_regions(self, regions: list):
         self._regions = regions
+        self._selected_regions.clear()
+        self._refresh_overlay()
+
+    def toggle_region_selection(self, idx: int):
+        if idx in self._selected_regions:
+            self._selected_regions.discard(idx)
+        else:
+            self._selected_regions.add(idx)
         self._refresh_overlay()
 
     def _refresh_overlay(self):
@@ -125,8 +134,12 @@ class ImageCanvas(QGraphicsView):
         for i, region in enumerate(self._regions):
             pts = np.array(region.contour, dtype=np.int32)
             if pts.ndim == 2 and pts.shape[0] >= 3:
-                cv2.drawContours(overlay, [pts], -1, (255, 60, 60, 180), -1)
-                cv2.drawContours(overlay, [pts], -1, (255, 0, 0, 255), 1)
+                if i in self._selected_regions:
+                    cv2.drawContours(overlay, [pts], -1, (0, 100, 255, 180), -1)
+                    cv2.drawContours(overlay, [pts], -1, (0, 120, 255, 255), 2)
+                else:
+                    cv2.drawContours(overlay, [pts], -1, (255, 60, 60, 180), -1)
+                    cv2.drawContours(overlay, [pts], -1, (255, 0, 0, 255), 1)
         qimg = QImage(overlay.data, w, h, w * 4, QImage.Format_RGBA8888)
         self._overlay_item.setPixmap(QPixmap.fromImage(qimg))
 
@@ -170,13 +183,15 @@ class ImageCanvas(QGraphicsView):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pos = self.mapToScene(event.pos())
+            clicked_region = False
             for i, region in enumerate(self._regions):
                 pts = np.array(region.contour, dtype=np.int32)
                 if pts.ndim == 2 and pts.shape[0] >= 3:
                     if cv2.pointPolygonTest(pts, (pos.x(), pos.y()), False) >= 0:
                         self.region_selected.emit(i)
+                        clicked_region = True
                         break
-            if self._image_bgr is not None:
+            if not clicked_region and self._image_bgr is not None:
                 px, py = int(pos.x()), int(pos.y())
                 h, w = self._image_bgr.shape[:2]
                 if 0 <= px < w and 0 <= py < h:

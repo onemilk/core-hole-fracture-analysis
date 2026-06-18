@@ -195,11 +195,12 @@ class MainWindow(QMainWindow):
         self._sampled_point = (px, py)
 
     def _on_region_selected(self, idx):
-        if idx in self._selected_regions:
-            self._selected_regions.discard(idx)
+        self._canvas.toggle_region_selection(idx)
+        sel_count = len(self._canvas._selected_regions)
+        if sel_count > 0:
+            self._status_bar.showMessage(f"已选中 {sel_count} 个区域（蓝色高亮）— 编辑仅影响选中区域")
         else:
-            self._selected_regions.add(idx)
-        self._status_bar.showMessage(f"已选中 {len(self._selected_regions)} 个区域 — 编辑仅影响选中区域")
+            self._status_bar.showMessage("已取消全部选中")
 
     def _on_roi_select(self):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
@@ -282,7 +283,7 @@ class MainWindow(QMainWindow):
     def _on_morphology(self, op: str):
         regions = self._canvas.regions
         if not regions: return
-        targets = self._selected_regions if self._selected_regions else set(range(len(regions)))
+        targets = self._canvas._selected_regions if self._canvas._selected_regions else set(range(len(regions)))
         updated = []
         for i, r in enumerate(regions):
             if i in targets:
