@@ -145,7 +145,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
         self._tool_panel.tool_changed.connect(self._on_tool_changed)
-        self._tool_panel.brush_confirm_requested.connect(self._confirm_brush)
+        self._tool_panel.brush_confirm_requested.connect(self._confirm_brush)  # kept for backward compat
         self._canvas.viewport().installEventFilter(self)
 
     # ── Slots ──
@@ -312,13 +312,9 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage("没有可撤销的涂改")
 
     def _confirm_brush(self):
-        """Apply all pending brush strokes."""
-        if self._canvas._brush_mask is not None and self._canvas._brush_mask.any():
-            count = self._canvas._apply_brush()
-            self._detect_label.setText(f"检测: {count}个区域")
-            self._status_bar.showMessage(f"✅ 涂改已确认 — 当前 {count} 个区域")
-        else:
-            self._status_bar.showMessage("没有待确认的涂改")
+        count = len(self._canvas.regions)
+        self._detect_label.setText(f"检测: {count}个区域")
+        self._status_bar.showMessage(f"当前 {count} 个区域 — 点击增删即时生效")
 
     def _on_save_params(self):
         """Apply fill status/material/effectiveness from panel to status bar."""

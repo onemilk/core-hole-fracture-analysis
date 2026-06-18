@@ -158,17 +158,38 @@ class ImageCanvas(QGraphicsView):
         self._annotation_visible = visible
 
     def set_drawing_mode(self, mode: str):
-        """Set brush mode: 'erase', 'add', or None to disable."""
+        """Set click-to-edit mode: 'erase', 'add', or None."""
         self._drawing_mode = mode
         if mode:
-            self._brush_mask = np.zeros(self._image_bgr.shape[:2], dtype=np.uint8) if self._image_bgr is not None else None
             self.setDragMode(QGraphicsView.NoDrag)
             self.setCursor(Qt.CrossCursor)
-            self.setFocus()  # ensure keyboard events reach us
+            self.setFocus()
         else:
-            self._brush_mask = None
             self.setDragMode(QGraphicsView.ScrollHandDrag)
             self.setCursor(Qt.ArrowCursor)
+
+    def handle_edit_click(self, scene_pos):
+        """Add or remove a circular region at click point. Instant, no preview."""
+        if self._image_bgr is None or not self._drawing_mode:
+            return 0
+        px, py = int(scene_pos.x()), int(scene_pos.y())
+        r = 12
+        if self._drawing_mode == 'erase':
+            self._regions = [reg for reg in self._regions
+                             if (reg.centroid[0]-px)**2 + (reg.centroid[1]-py)**2 > r**2]
+        else:
+            mask = np.zeros(self._image_bgr.shape[:2], dtype=np.uint8)
+            cv2.circle(mask, (px, py), r, 255, -1)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                cnt = contours[0]
+                from core_analysis.data.models import MaskRegion
+                self._regions.append(MaskRegion(
+                    contour=cnt.squeeze(1).tolist() if len(cnt.shape) == 3 else [],
+                    area_px=cv2.contourArea(cnt), centroid=(float(px), float(py)),
+                    bbox=cv2.boundingRect(cnt)))
+        self._refresh_overlay()
+        return len(self._regions)
 
     def _draw_sample_marker(self, px, py):
         """Draw a bright green crosshair at the sampled point."""
@@ -201,9 +222,8 @@ class ImageCanvas(QGraphicsView):
     # ── Mouse Events ──
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self._drawing_mode and self._image_bgr is not None:
-            self._draw_brush_at(self.mapToScene(event.pos()))
-            self._is_drawing = True
+        if self._drawing_mode and self._image_bgr is not None:
+            self.handle_edit_click(self.mapToScene(event.pos()))
             event.accept()
             return
         if event.button() == Qt.LeftButton:
