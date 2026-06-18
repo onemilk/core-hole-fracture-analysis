@@ -57,6 +57,7 @@ class ImageCanvas(QGraphicsView):
         self._drawing_mode = None  # 'erase', 'add', or None
         self._brush_mask = None
         self._brush_radius = 15
+        self._undo_regions = None  # previous regions for undo
 
     # ── Image Loading ──
 
@@ -254,9 +255,23 @@ class ImageCanvas(QGraphicsView):
         self._annotation_item.setPixmap(QPixmap.fromImage(qimg))
         self._annotation_item.setVisible(True)
 
+    def undo_last_edit(self):
+        """Restore regions before last brush stroke."""
+        if self._undo_regions is not None:
+            self._regions = self._undo_regions
+            self._undo_regions = None
+            self._selected_regions.clear()
+            self._refresh_overlay()
+            return True
+        return False
+
     def _apply_brush(self):
         """Merge brush strokes into existing regions."""
         if self._brush_mask is None or self._image_bgr is None: return
+        # Save undo state
+        self._undo_regions = [MaskRegion(
+            contour=list(r.contour), area_px=r.area_px,
+            centroid=r.centroid, bbox=r.bbox) for r in self._regions]
         h, w = self._image_bgr.shape[:2]
         # Build mask from existing regions
         existing = np.zeros((h, w), dtype=np.uint8)

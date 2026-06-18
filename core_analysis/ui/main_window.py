@@ -68,6 +68,11 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction("退出", self.close)
 
+        edit_menu = menubar.addMenu("编辑")
+        undo_action = edit_menu.addAction("撤销涂改 (Ctrl+Z)")
+        undo_action.setShortcut("Ctrl+Z")
+        undo_action.triggered.connect(self._undo_brush)
+
         process_menu = menubar.addMenu("处理")
         process_menu.addAction("自动色阶", self._auto_levels)
 
@@ -296,6 +301,12 @@ class MainWindow(QMainWindow):
             regions = filtered
         self._canvas.set_regions(regions)
         self._detect_label.setText(f"检测: {len(regions)}个区域")
+
+    def _undo_brush(self):
+        if self._canvas.undo_last_edit():
+            self._status_bar.showMessage("已撤销涂改")
+        else:
+            self._status_bar.showMessage("没有可撤销的涂改")
 
     def _on_save_params(self):
         """Apply fill status/material/effectiveness from panel to status bar."""
