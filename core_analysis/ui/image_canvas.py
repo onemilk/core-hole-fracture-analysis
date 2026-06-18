@@ -169,9 +169,12 @@ class ImageCanvas(QGraphicsView):
             self.setCursor(Qt.ArrowCursor)
 
     def handle_edit_click(self, scene_pos):
-        """Add or remove a circular region at click point. Instant, no preview."""
+        """Add or remove a circular region at click point. Instant."""
         if self._image_bgr is None or not self._drawing_mode:
             return 0
+        # Save for undo
+        self._undo_regions = [MaskRegion(contour=list(r.contour), area_px=r.area_px,
+            centroid=r.centroid, bbox=r.bbox) for r in self._regions]
         px, py = int(scene_pos.x()), int(scene_pos.y())
         r = 12
         if self._drawing_mode == 'erase':
