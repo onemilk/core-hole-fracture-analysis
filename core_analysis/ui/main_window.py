@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
         self._current_model = "classic"
         self._sampled_color = None
         self._sampled_point = None
+        self._roi_mode = False
 
         self._setup_ui()
         self._connect_signals()
@@ -178,6 +179,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"岩心孔洞裂缝分析教学系统 — {type_names.get(atype, '')}")
 
     def _on_color_sampled(self, color):
+        if self._roi_mode: return  # suppress during ROI selection
         self._sampled_color = color
         msg = f"已采样 RGB({color[2]},{color[1]},{color[0]})"
         if self._tool_panel.is_continuous_mode():
@@ -186,36 +188,36 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage(msg)
 
     def _on_point_sampled(self, px, py):
+        if self._roi_mode: return  # suppress during ROI selection
         self._sampled_point = (px, py)
 
     def _on_roi_select(self):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
+        self._roi_mode = True
         self._canvas._roi_rect_start = None
-        self._roi_dragging = False
         self._canvas.setCursor(Qt.CrossCursor)
-        self._status_bar.showMessage("在图像上拖拽框定分析区域（仅分析框内）")
+        self._status_bar.showMessage("拖拽框定分析区域 — 完成后自动退出")
 
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
-        if obj == self._canvas.viewport() and self._canvas._roi_rect_start is not None or getattr(self, '_roi_dragging', False):
+        if obj == self._canvas.viewport() and self._roi_mode:
             if event.type() == QEvent.MouseButtonPress:
                 self._canvas._roi_rect_start = event.pos()
-                self._roi_dragging = True
                 return True
-            elif event.type() == QEvent.MouseMove and self._roi_dragging:
+            elif event.type() == QEvent.MouseMove and self._canvas._roi_rect_start is not None:
                 p1 = self._canvas._roi_rect_start
                 p2 = event.pos()
                 sp1 = self._canvas.mapToScene(p1)
                 sp2 = self._canvas.mapToScene(p2)
                 self._canvas.set_roi_rect(int(sp1.x()), int(sp1.y()), int(sp2.x()), int(sp2.y()))
                 return True
-            elif event.type() == QEvent.MouseButtonRelease and self._roi_dragging:
-                self._roi_dragging = False
-                self._canvas.setCursor(Qt.ArrowCursor)
+            elif event.type() == QEvent.MouseButtonRelease and self._canvas._roi_rect_start is not None:
                 p1 = self._canvas.mapToScene(self._canvas._roi_rect_start)
                 p2 = self._canvas.mapToScene(event.pos())
                 self._canvas.set_roi_rect(int(p1.x()), int(p1.y()), int(p2.x()), int(p2.y()))
                 self._canvas._roi_rect_start = None
+                self._roi_mode = False
+                self._canvas.setCursor(Qt.ArrowCursor)
                 self._status_bar.showMessage("分析区域已框定 — 提取时仅分析区域内")
                 return True
         return super().eventFilter(obj, event)
