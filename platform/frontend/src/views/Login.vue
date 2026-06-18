@@ -1,14 +1,14 @@
 <template>
   <div class="login-page">
     <h2>登录</h2>
-    <form @submit.prevent="login">
+    <form @submit.prevent="handleLogin">
       <input v-model="username" placeholder="用户名" required />
       <input v-model="password" type="password" placeholder="密码" required />
       <button type="submit">登录</button>
     </form>
     <p v-if="error" class="error">{{ error }}</p>
-    <p class="hint">没有账号？先注册：</p>
-    <form @submit.prevent="register">
+    <p class="hint">没有账号？在此注册：</p>
+    <form @submit.prevent="handleRegister">
       <input v-model="regUser" placeholder="用户名" required />
       <input v-model="regPass" type="password" placeholder="密码" required />
       <button type="submit">注册</button>
@@ -19,31 +19,29 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../api/index.js';
+import { useAuthStore } from '../stores/auth.js';
 
 const router = useRouter();
+const auth = useAuthStore();
 const username = ref('');
 const password = ref('');
 const regUser = ref('');
 const regPass = ref('');
 const error = ref(null);
 
-async function login() {
+async function handleLogin() {
   try {
-    const res = await api.login({ username: username.value, password: password.value });
-    localStorage.setItem('token', res.data.token);
+    await auth.loginAction(username.value, password.value);
     router.push('/');
   } catch (e) {
     error.value = '登录失败: ' + (e.response?.data?.error || e.message);
   }
 }
 
-async function register() {
+async function handleRegister() {
   try {
-    await api.register({ username: regUser.value, password: regPass.value, role: 'student' });
-    username.value = regUser.value;
-    password.value = regPass.value;
-    await login();
+    await auth.registerAction(regUser.value, regPass.value);
+    router.push('/');
   } catch (e) {
     error.value = '注册失败: ' + (e.response?.data?.error || e.message);
   }
