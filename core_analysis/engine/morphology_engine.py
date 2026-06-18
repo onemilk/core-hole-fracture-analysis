@@ -32,8 +32,11 @@ class MorphologyEngine:
         cx = M["m10"] / M["m00"] if M["m00"] != 0 else 0.0
         cy = M["m01"] / M["m00"] if M["m00"] != 0 else 0.0
         x, y, w, h = cv2.boundingRect(cnt)
+        adjusted = cnt.squeeze(1) if len(cnt.shape) == 3 else cnt
+        if offset_x != 0 or offset_y != 0:
+            adjusted = adjusted + [offset_x, offset_y]
         return MaskRegion(
-            contour=cnt.squeeze(1).tolist() if len(cnt.shape) == 3 else [],
+            contour=adjusted.tolist(),
             area_px=area,
             centroid=(cx + offset_x, cy + offset_y),
             bbox=(x + offset_x, y + offset_y, w, h)
