@@ -195,6 +195,7 @@ class MainWindow(QMainWindow):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
         self._roi_mode = True
         self._canvas._roi_rect_start = None
+        self._canvas.viewport().installEventFilter(self)
         self._canvas.setCursor(Qt.CrossCursor)
         self._status_bar.showMessage("拖拽框定分析区域 — 完成后自动退出")
 
