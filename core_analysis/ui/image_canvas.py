@@ -65,6 +65,7 @@ class ImageCanvas(QGraphicsView):
         self._refresh_image_layer()
         self._overlay_item.setPixmap(QPixmap())
         self._annotation_item.setPixmap(QPixmap())
+        self._annotation_item.setVisible(False)
         self._regions = []
         self._fit_to_window()
 
@@ -134,6 +135,20 @@ class ImageCanvas(QGraphicsView):
     def toggle_annotation(self, visible: bool):
         self._annotation_visible = visible
 
+    def _draw_sample_marker(self, px, py):
+        """Draw a bright green crosshair at the sampled point."""
+        if self._image_bgr is None:
+            return
+        h, w = self._image_bgr.shape[:2]
+        marker = np.zeros((h, w, 4), dtype=np.uint8)
+        r = 10
+        cv2.line(marker, (px - r, py), (px + r, py), (0, 255, 0, 255), 2)
+        cv2.line(marker, (px, py - r), (px, py + r), (0, 255, 0, 255), 2)
+        cv2.circle(marker, (px, py), r, (0, 255, 0, 255), 1)
+        qimg = QImage(marker.data, w, h, w * 4, QImage.Format_RGBA8888)
+        self._annotation_item.setPixmap(QPixmap.fromImage(qimg))
+        self._annotation_item.setVisible(True)
+
     # ── Zoom ──
 
     def zoom_in(self):
@@ -165,6 +180,7 @@ class ImageCanvas(QGraphicsView):
                 if 0 <= px < w and 0 <= py < h:
                     self.color_sampled.emit(self._image_bgr[py, px])
                     self.point_sampled.emit(px, py)
+                    self._draw_sample_marker(px, py)
         super().mousePressEvent(event)
 
     def wheelEvent(self, event):
