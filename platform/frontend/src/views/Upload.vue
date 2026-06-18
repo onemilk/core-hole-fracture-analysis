@@ -23,6 +23,13 @@
         <option value="fracture">裂缝分析</option>
         <option value="grain">粒度分析</option>
       </select>
+      <div style="margin:8px 0">
+        <label>分割模型：</label>
+        <select v-model="modelType">
+          <option value="classic">经典颜色分割</option>
+          <option value="unet">U-Net 深度学习</option>
+        </select>
+      </div>
       <button @click="startAnalysis" :disabled="analyzing">
         {{ analyzing ? '分析中...' : '开始分析' }}
       </button>
@@ -42,6 +49,7 @@ const sampleId = ref(null);
 const uploaded = ref(false);
 const analyzing = ref(false);
 const analysisType = ref('hole');
+const modelType = ref('classic');
 const analysisId = ref(null);
 const form = ref({ basin: '', well_id: '', top_depth: null, bottom_depth: null });
 
@@ -63,6 +71,7 @@ async function startAnalysis() {
   const res = await api.submitAnalysis({
     sample_id: sampleId.value,
     type: analysisType.value,
+    model: modelType.value,
     image_path: null,
     params: {}
   });
