@@ -130,6 +130,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.view_report_requested.connect(self._generate_report)
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
         self._tool_panel.model_changed.connect(lambda m: setattr(self, '_current_model', m))
+        self._tool_panel.save_params_requested.connect(self._on_save_params)
         self._canvas.color_sampled.connect(self._on_color_sampled)
         self._canvas.point_sampled.connect(self._on_point_sampled)
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
@@ -261,6 +262,14 @@ class MainWindow(QMainWindow):
         self._canvas.set_regions(regions)
         self._detect_label.setText(f"检测: {len(regions)}个区域")
 
+    def _on_save_params(self):
+        """Apply fill status/material/effectiveness from panel to status bar."""
+        fill_status = self._tool_panel.current_fill_status()
+        fill_material = self._tool_panel.current_fill_material()
+        effectiveness = self._tool_panel.current_effectiveness()
+        self._status_bar.showMessage(
+            f"参数已应用: 充填={fill_status}, 填充物={fill_material or '无'}, 有效性={effectiveness}")
+
     def _on_morphology(self, op: str):
         regions = self._canvas.regions
         if not regions: return
@@ -329,6 +338,15 @@ class MainWindow(QMainWindow):
             html = ReportGenerator.generate_fracture_report(summary, fractures, type_stats, info)
         session = AnalysisSession(image_id=self._current_image_id, analysis_type=self._analysis_type)
         session_id = self._store.create_session(session)
+        # Apply feature parameters from panel (hole/fracture only)
+        if self._analysis_type in ("hole", "fracture"):
+            fill_status = self._tool_panel.current_fill_status()
+            fill_material = self._tool_panel.current_fill_material()
+            effectiveness = self._tool_panel.current_effectiveness()
+            for r in results:
+                r.fill_status = fill_status
+                r.fill_material = fill_material
+                r.effectiveness = effectiveness
         # Persist individual result records
         for r in results:
             r.image_id = self._current_image_id
