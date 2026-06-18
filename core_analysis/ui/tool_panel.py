@@ -18,6 +18,8 @@ class ToolPanel(QWidget):
     fill_material_changed = Signal(str)
     effectiveness_changed = Signal(str)
     model_changed = Signal(str)  # "classic" | "unet"
+    roi_select_requested = Signal()
+    roi_clear_requested = Signal()
     save_params_requested = Signal()
     view_report_requested = Signal()
 
@@ -86,6 +88,12 @@ class ToolPanel(QWidget):
         extract_btn = QPushButton("一键提取")
         extract_btn.clicked.connect(self.auto_extract_requested.emit)
         auto_layout.addWidget(extract_btn)
+        roi_btn = QPushButton("📐 框定分析区域")
+        roi_btn.clicked.connect(self.roi_select_requested.emit)
+        auto_layout.addWidget(roi_btn)
+        clear_roi_btn = QPushButton("清除区域")
+        clear_roi_btn.clicked.connect(self.roi_clear_requested.emit)
+        auto_layout.addWidget(clear_roi_btn)
         right_panel.addWidget(auto_group)
 
         # Edit group

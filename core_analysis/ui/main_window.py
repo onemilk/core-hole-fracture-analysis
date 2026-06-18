@@ -131,6 +131,8 @@ class MainWindow(QMainWindow):
         self._tool_panel.model_changed.connect(lambda m: setattr(self, '_current_model', m))
         self._canvas.color_sampled.connect(self._on_color_sampled)
         self._canvas.point_sampled.connect(self._on_point_sampled)
+        self._tool_panel.roi_select_requested.connect(self._on_roi_select)
+        self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
 
     # ── Slots ──
 
@@ -186,6 +188,36 @@ class MainWindow(QMainWindow):
     def _on_point_sampled(self, px, py):
         self._sampled_point = (px, py)
 
+    def _on_roi_select(self):
+        """Activate ROI selection mode: user drags a rectangle on the canvas."""
+        from PySide6.QtWidgets import QRubberBand
+        from PySide6.QtCore import QRect
+        self._rubber_band = QRubberBand(QRubberBand.Rectangle, self._canvas)
+        self._canvas._roi_rect_start = None
+        self._canvas.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+        if obj == self._canvas.viewport():
+            if event.type() == QEvent.MouseButtonPress:
+                self._canvas._roi_rect_start = event.pos()
+                self._rubber_band.setGeometry(QRect(event.pos(), event.pos()))
+                self._rubber_band.show()
+                return True
+            elif event.type() == QEvent.MouseMove and self._canvas._roi_rect_start is not None:
+                self._rubber_band.setGeometry(
+                    QRect(self._canvas._roi_rect_start, event.pos()).normalized())
+                return True
+            elif event.type() == QEvent.MouseButtonRelease and self._canvas._roi_rect_start is not None:
+                self._rubber_band.hide()
+                p1 = self._canvas.mapToScene(self._canvas._roi_rect_start)
+                p2 = self._canvas.mapToScene(event.pos())
+                self._canvas.set_roi_rect(int(p1.x()), int(p1.y()), int(p2.x()), int(p2.y()))
+                self._canvas._roi_rect_start = None
+                self._status_bar.showMessage("分析区域已框定 — 提取时仅分析区域内")
+                return True
+        return super().eventFilter(obj, event)
+
     def _auto_extract(self):
         if self._canvas.image_bgr is None: return
         if self._current_model == "unet":
@@ -209,6 +241,18 @@ class MainWindow(QMainWindow):
                     self._canvas.image_bgr, sample_color, tolerance)
             threshold = self._tool_panel.denoise_threshold()
             regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
+        # Apply ROI mask if set
+        mask = self._canvas.analysis_mask
+        if mask is not None and regions:
+            filtered = []
+            for r in regions:
+                pts = np.array(r.contour, dtype=np.int32)
+                if pts.ndim == 2 and pts.shape[0] >= 3:
+                    cx, cy = int(r.centroid[0]), int(r.centroid[1])
+                    h, w = mask.shape
+                    if 0 <= cx < w and 0 <= cy < h and mask[cy, cx] > 0:
+                        filtered.append(r)
+            regions = filtered
         self._canvas.set_regions(regions)
         self._detect_label.setText(f"检测: {len(regions)}个区域")
 

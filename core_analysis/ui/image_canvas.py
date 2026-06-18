@@ -51,6 +51,8 @@ class ImageCanvas(QGraphicsView):
         self._overlay_visible = True
         self._annotation_visible = True
         self._rotation_angle = 0.0
+        self._analysis_mask = None
+        self._roi_rect_start = None
 
     # ── Image Loading ──
 
@@ -195,6 +197,39 @@ class ImageCanvas(QGraphicsView):
             self.zoom_out()
 
     # ── Properties ──
+
+    def set_roi_rect(self, x1, y1, x2, y2):
+        """Set a rectangular analysis mask. Only pixels inside are analyzed."""
+        if self._image_bgr is None: return
+        h, w = self._image_bgr.shape[:2]
+        if x1 > x2: x1, x2 = x2, x1
+        if y1 > y2: y1, y2 = y2, y1
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+        self._analysis_mask = np.zeros((h, w), dtype=np.uint8)
+        self._analysis_mask[y1:y2, x1:x2] = 255
+        self._show_roi_overlay()
+
+    def clear_roi(self):
+        """Remove analysis mask."""
+        self._analysis_mask = None
+        self._show_roi_overlay()
+
+    def _show_roi_overlay(self):
+        """Draw ROI boundary on annotation layer."""
+        if self._image_bgr is None: return
+        h, w = self._image_bgr.shape[:2]
+        overlay = np.zeros((h, w, 4), dtype=np.uint8)
+        if self._analysis_mask is not None:
+            contours, _ = cv2.findContours(self._analysis_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(overlay, contours, -1, (0, 255, 0, 255), 2)
+        qimg = QImage(overlay.data, w, h, w * 4, QImage.Format_RGBA8888)
+        self._annotation_item.setPixmap(QPixmap.fromImage(qimg))
+        self._annotation_item.setVisible(True)
+
+    @property
+    def analysis_mask(self):
+        return self._analysis_mask
 
     @property
     def regions(self) -> list:
