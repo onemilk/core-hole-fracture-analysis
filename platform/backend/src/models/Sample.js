@@ -8,7 +8,12 @@ const sampleSchema = new mongoose.Schema({
   bottom_depth: { type: Number, required: true },
   lithology: { type: Object, default: {} },
   resolution_dpi: { type: Number, enum: [600, 1200], default: 600 },
-  image_files: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ImageFile' }],
+  image_files: [{
+    filename: String,
+    path: String,
+    mimetype: String,
+    size: Number
+  }],
   created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   created_at: { type: Date, default: Date.now }
 });
