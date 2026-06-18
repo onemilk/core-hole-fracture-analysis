@@ -20,6 +20,7 @@ class ToolPanel(QWidget):
     model_changed = Signal(str)  # "classic" | "unet"
     roi_select_requested = Signal()
     roi_clear_requested = Signal()
+    brush_confirm_requested = Signal()
     save_params_requested = Signal()
     view_report_requested = Signal()
 
@@ -111,6 +112,9 @@ class ToolPanel(QWidget):
             btn.clicked.connect(lambda checked, o=op: self.morphology_requested.emit(o))
             morph_row.addWidget(btn)
         edit_layout.addRow(morph_row)
+        confirm_btn = QPushButton("✅ 确认涂改")
+        confirm_btn.clicked.connect(self.brush_confirm_requested.emit)
+        edit_layout.addRow(confirm_btn)
         right_panel.addWidget(edit_group)
 
         # Feature params group

@@ -145,6 +145,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
         self._tool_panel.tool_changed.connect(self._on_tool_changed)
+        self._tool_panel.brush_confirm_requested.connect(self._confirm_brush)
         self._canvas.viewport().installEventFilter(self)
 
     # ── Slots ──
@@ -244,37 +245,7 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
-        # Drawing mode: handle brush strokes directly
-        if obj == self._canvas.viewport() and self._canvas._drawing_mode:
-            if event.type() == QEvent.MouseButtonPress:
-                if event.button() == Qt.RightButton:
-                    # Right-click: immediately apply and add single point
-                    pos = self._canvas.mapToScene(event.pos())
-                    self._canvas._draw_brush_at(pos)
-                    count = self._canvas._apply_brush()
-                    self._detect_label.setText(f"检测: {count}个区域")
-                    return True
-                else:
-                    pos = self._canvas.mapToScene(event.pos())
-                    self._canvas._draw_brush_at(pos)
-                    self._canvas._is_drawing = True
-                    return True
-            elif event.type() == QEvent.MouseMove and getattr(self._canvas, '_is_drawing', False):
-                pos = self._canvas.mapToScene(event.pos())
-                self._canvas._draw_brush_at(pos)
-                return True
-            elif event.type() == QEvent.MouseButtonRelease and getattr(self._canvas, '_is_drawing', False):
-                self._canvas._is_drawing = False
-                count = self._canvas._apply_brush()
-                self._detect_label.setText(f"检测: {count}个区域")
-                return True
-            elif event.type() == QEvent.KeyPress:
-                if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                    if self._canvas._brush_mask is not None:
-                        count = self._canvas._apply_brush()
-                        self._detect_label.setText(f"检测: {count}个区域")
-                    return True
-        elif obj == self._canvas.viewport() and self._roi_mode:
+        if obj == self._canvas.viewport() and self._roi_mode:
             if event.type() == QEvent.MouseButtonPress:
                 self._canvas._roi_rect_start = event.pos()
                 return True
@@ -339,6 +310,15 @@ class MainWindow(QMainWindow):
             self._status_bar.showMessage("已撤销涂改")
         else:
             self._status_bar.showMessage("没有可撤销的涂改")
+
+    def _confirm_brush(self):
+        """Apply all pending brush strokes."""
+        if self._canvas._brush_mask is not None and self._canvas._brush_mask.any():
+            count = self._canvas._apply_brush()
+            self._detect_label.setText(f"检测: {count}个区域")
+            self._status_bar.showMessage(f"✅ 涂改已确认 — 当前 {count} 个区域")
+        else:
+            self._status_bar.showMessage("没有待确认的涂改")
 
     def _on_save_params(self):
         """Apply fill status/material/effectiveness from panel to status bar."""
