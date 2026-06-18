@@ -54,6 +54,7 @@ class MainWindow(QMainWindow):
         self._sampled_point = None
         self._roi_mode = False
         self._selected_regions = set()
+        self._multi_select = False
 
         self._setup_ui()
         self._connect_signals()
@@ -137,6 +138,7 @@ class MainWindow(QMainWindow):
         self._canvas.region_selected.connect(self._on_region_selected)
         self._tool_panel.roi_select_requested.connect(self._on_roi_select)
         self._tool_panel.roi_clear_requested.connect(self._canvas.clear_roi)
+        self._tool_panel.tool_changed.connect(self._on_tool_changed)
 
     # ── Slots ──
 
@@ -195,12 +197,24 @@ class MainWindow(QMainWindow):
         self._sampled_point = (px, py)
 
     def _on_region_selected(self, idx):
-        self._canvas.toggle_region_selection(idx)
+        if self._multi_select:
+            self._canvas.toggle_region_selection(idx)
+        else:
+            # Single select: clear others, select this one
+            self._canvas._selected_regions.clear()
+            self._canvas._selected_regions.add(idx)
+            self._canvas._refresh_overlay()
         sel_count = len(self._canvas._selected_regions)
         if sel_count > 0:
-            self._status_bar.showMessage(f"已选中 {sel_count} 个区域（蓝色高亮）— 编辑仅影响选中区域")
+            mode = "多选" if self._multi_select else "单选"
+            self._status_bar.showMessage(f"[{mode}] 已选中 {sel_count} 个区域（蓝色高亮）")
         else:
             self._status_bar.showMessage("已取消全部选中")
+
+    def _on_tool_changed(self, tool_id: str):
+        self._multi_select = (tool_id == "multi_select")
+        mode = "多选模式：点击累加选中" if self._multi_select else "单选模式：点击替换选中"
+        self._status_bar.showMessage(mode)
 
     def _on_roi_select(self):
         """Activate ROI selection: drag on canvas to define analysis rectangle."""
