@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         self._analysis_type = "hole"
         self._current_model = "classic"
         self._sampled_color = None
+        self._sampled_point = None
 
         self._setup_ui()
         self._connect_signals()
@@ -129,6 +130,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
         self._tool_panel.model_changed.connect(lambda m: setattr(self, '_current_model', m))
         self._canvas.color_sampled.connect(self._on_color_sampled)
+        self._canvas.point_sampled.connect(self._on_point_sampled)
 
     # ── Slots ──
 
@@ -175,7 +177,14 @@ class MainWindow(QMainWindow):
 
     def _on_color_sampled(self, color):
         self._sampled_color = color
-        self._status_bar.showMessage(f"已采样颜色 RGB({color[2]},{color[1]},{color[0]}) — 点击「一键提取」分析")
+        msg = f"已采样 RGB({color[2]},{color[1]},{color[0]})"
+        if self._tool_panel.is_continuous_mode():
+            msg += " — 连续区域模式"
+        msg += " — 点击「一键提取」分析"
+        self._status_bar.showMessage(msg)
+
+    def _on_point_sampled(self, px, py):
+        self._sampled_point = (px, py)
 
     def _auto_extract(self):
         if self._canvas.image_bgr is None: return
@@ -191,8 +200,13 @@ class MainWindow(QMainWindow):
             else:
                 sample_color = self._canvas.image_bgr[h // 2, w // 2]
             tolerance = self._tool_panel.match_tolerance()
-            regions = RegionExtractor.extract_by_color_sample(
-                self._canvas.image_bgr, sample_color, tolerance)
+            if self._tool_panel.is_continuous_mode() and self._sampled_point is not None:
+                px, py = self._sampled_point
+                regions = RegionExtractor.extract_continuous_at_point(
+                    self._canvas.image_bgr, sample_color, px, py, tolerance)
+            else:
+                regions = RegionExtractor.extract_by_color_sample(
+                    self._canvas.image_bgr, sample_color, tolerance)
             threshold = self._tool_panel.denoise_threshold()
             regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
         self._canvas.set_regions(regions)

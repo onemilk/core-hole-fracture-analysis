@@ -18,6 +18,7 @@ class Layer:
 class ImageCanvas(QGraphicsView):
     region_selected = Signal(int)
     color_sampled = Signal(np.ndarray)
+    point_sampled = Signal(int, int)  # x, y
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -163,6 +164,7 @@ class ImageCanvas(QGraphicsView):
                 h, w = self._image_bgr.shape[:2]
                 if 0 <= px < w and 0 <= py < h:
                     self.color_sampled.emit(self._image_bgr[py, px])
+                    self.point_sampled.emit(px, py)
         super().mousePressEvent(event)
 
     def wheelEvent(self, event):
