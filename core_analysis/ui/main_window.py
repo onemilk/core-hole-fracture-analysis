@@ -50,6 +50,7 @@ class MainWindow(QMainWindow):
         self._current_image_record = None
         self._analysis_type = "hole"
         self._current_model = "classic"
+        self._sampled_color = None
 
         self._setup_ui()
         self._connect_signals()
@@ -127,6 +128,7 @@ class MainWindow(QMainWindow):
         self._tool_panel.view_report_requested.connect(self._generate_report)
         self._tool_panel.denoise_threshold_changed.connect(self._on_denoise)
         self._tool_panel.model_changed.connect(lambda m: setattr(self, '_current_model', m))
+        self._canvas.color_sampled.connect(self._on_color_sampled)
 
     # ── Slots ──
 
@@ -171,6 +173,10 @@ class MainWindow(QMainWindow):
         type_names = {"hole": "孔洞分析", "fracture": "裂缝分析", "grain": "粒度分析"}
         self.setWindowTitle(f"岩心孔洞裂缝分析教学系统 — {type_names.get(atype, '')}")
 
+    def _on_color_sampled(self, color):
+        self._sampled_color = color
+        self._status_bar.showMessage(f"已采样颜色 RGB({color[2]},{color[1]},{color[0]}) — 点击「一键提取」分析")
+
     def _auto_extract(self):
         if self._canvas.image_bgr is None: return
         if self._current_model == "unet":
@@ -180,7 +186,10 @@ class MainWindow(QMainWindow):
             regions = MorphologyEngine.denoise_by_area(regions, min_area_px=threshold)
         else:
             h, w = self._canvas.image_size
-            sample_color = self._canvas.image_bgr[h // 2, w // 2]
+            if self._sampled_color is not None:
+                sample_color = self._sampled_color
+            else:
+                sample_color = self._canvas.image_bgr[h // 2, w // 2]
             tolerance = self._tool_panel.match_tolerance()
             regions = RegionExtractor.extract_by_color_sample(
                 self._canvas.image_bgr, sample_color, tolerance)
